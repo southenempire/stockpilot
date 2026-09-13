@@ -1,0 +1,21 @@
+[package]
+name = "stockpilot"
+version = "0.1.0"
+description = "Autonomous 24/7 AI Stock Robo-Advisor and Rebalance Vault Program on Solana"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "stockpilot"
+
+[features]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = { version = "0.30.1", features = ["init-if-needed"] }
+anchor-spl = { version = "0.30.1", features = ["token_2022", "token"] }
+solana-program = "=1.18.26"

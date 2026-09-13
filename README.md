@@ -1,36 +1,107 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 StockPilot — Autonomous 24/7 AI Stock Portfolios on Solana
 
-## Getting Started
+> **Submitted to the Solana Foundation Stocklana Hackathon (September 2026)**  
+> **Track / Wedge:** **Investing (Index Baskets & Robo Portfolios) + Consumer Mobile-First UX**
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 💡 The Problem & Thesis
+
+TradFi brokerages (Robinhood, Fidelity, Schwab) and robo-advisors (Wealthfront, Betterment) suffer from legacy financial rail bottlenecks:
+1. **Markets close at 4:00 PM** and remain shut all weekend.
+2. **Rebalancing takes 1 to 3 days to settle** and hits users with exorbitant advisory management fees.
+3. **Rigid ETF products** cannot be customized to an investor's real-time personal conviction.
+
+With tokenized stocks trading natively on Solana, **investing no longer needs to wait for Wall Street**. 
+
+**StockPilot** is an autonomous robo-advisor dApp that turns Solana into a 24/7 autonomous wealth manager:
+* **1-Tap Thematic Stock Baskets** (e.g. *AI Compute & Chips*, *Magnificent 7*, *Dividend Fortress*, *Cyberpunk High Beta*).
+* **"Prompt-to-Portfolio" AI Copilot:** Convert any natural language investment thesis into mathematically weighted on-chain allocations in seconds.
+* **Autonomous 24/7 Drift Detection & 1-Tap Rebalance Engine:** Monitors asset weight drift and executes atomic multi-token rebalancing in 400ms for < $0.0008.
+* **Mobile-First Consumer Onboarding & Viral Flex Cards:** Frictionless demo pilot mode ($10,000 preloaded test USDC) and 1-tap shareable performance cards for X and TikTok.
+
+---
+
+## ⚙️ Architecture & On-Chain Primitives
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                   StockPilot Mobile dApp                    │
+│   (Next.js 16 + Tailwind CSS + Framer Motion + Confetti)    │
+└──────────────┬───────────────────────────────┬──────────────┘
+               │                               │
+       [Select / Prompt]             [Deposit / Rebalance]
+               │                               │
+               ▼                               ▼
+┌─────────────────────────────┐ ┌─────────────────────────────┐
+│     AI Strategy Engine      │ │   Solana Vault & Rebalance  │
+│  (Dynamic weight allocation │ │ (PDA Custody + Clock Sysvar │
+│   + Covariance synthesis)   │ │  Timelock Cooldown + Swaps) │
+└─────────────────────────────┘ └──────────────┬──────────────┘
+                                               │
+                                               ▼
+                                ┌─────────────────────────────┐
+                                │ Tokenized Stock SPL Mints   │
+                                │ (xNVDA, xAAPL, xTSLA, USDC) │
+                                └─────────────────────────────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Key Solana Primitives Leveraged:
+1. **PDA Vault Custody:** Modeled on program-derived address vaults (`seeds = [b"stockpilot_vault", user_pubkey]`) so only authorized rebalancing programs or user instructions can touch assets.
+2. **Clock Sysvar Timelock Cooldown:** Enforces time-lock verification (`now >= last_rebalanced + cooldown`) using `Clock::get()?.unix_timestamp` to prevent high-frequency slippage churn.
+3. **Token-2022 & Atomic Multi-Token Routing:** Compatible with modern Token-2022 RWA equity mints and sub-cent atomic batch swaps.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🎯 How to Demo for Hackathon Judges
 
-## Learn More
+1. **Open the App:** Launch the app in your browser (desktop or mobile).
+2. **Demo Pilot Mode:** By default, Demo Pilot Mode is preloaded with **$10,000 USDC** (or connect Phantom / Solflare on Solana Devnet).
+3. **Select or Generate a Basket:**
+   * Pick one of the 4 pre-built baskets, OR
+   * Click **"AI Basket Creator" / "Prompt-to-Portfolio"** and type: *"Aggressive semiconductor and AI hardware basket"* to see the AI generate target weights.
+4. **Deposit & Allocate:** Enter \$250 USDC and click **"Deposit & Allocate Instantly"**.
+5. **Test Drift Detection (Interactive Simulator):**
+   * Use the **+15%** or **-10%** test buttons next to any stock (e.g. `xNVDA`) to simulate price volatility.
+   * Watch the Drift Alert banner immediately flag the percentage drift!
+6. **Execute 1-Tap Rebalance:**
+   * Click **"1-Tap Rebalance"** to preview the planned atomic swaps.
+   * Hit **"Confirm 1-Tap Rebalance"** $\rightarrow$ see the celebratory confetti, on-chain transaction signature, and portfolio weights realign back to target!
+7. **Export Viral Flex Card:**
+   * Click **"Export Viral Flex Card"** to see the 9:16 mobile story card formatted for instant sharing.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Local Development & Setup
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Prerequisites
+- Node.js >= 18
+- npm
 
-## Deploy on Vercel
+### Install and Run
+```bash
+# Clone the repository
+git clone https://github.com/southenempire/stockpilot.git
+cd stockpilot
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Install dependencies
+npm install
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Run the development server
+npm run dev
+```
+
+Visit `http://localhost:3000` in your browser.
+
+### Production Build
+```bash
+npm run build
+npm run start
+```
+
+---
+
+## 🏆 Hackathon Details
+- **Event:** Solana Foundation Stocklana Hackathon
+- **Deadline:** September 18, 2026
+- **Built by:** `1southen03`
