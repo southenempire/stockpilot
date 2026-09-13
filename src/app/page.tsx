@@ -1948,172 +1948,236 @@ export default function StockPilotApp() {
             </div>
           </section>
 
-          {/* Value Pillars Section (Cheaper, Simpler, Smarter) */}
-          <section id="why-stockpilot" className="py-20 px-4 sm:px-6">
-            <div className="mx-auto max-w-6xl space-y-16">
-              <div className="text-center space-y-3 max-w-2xl mx-auto">
-                <span
-                  className={`text-xs font-bold uppercase tracking-wider font-mono ${
-                    isLight ? 'text-sky-600' : 'text-[#00D2FF]'
-                  }`}
-                >
-                  Why StockPilot on Solana
-                </span>
+          {/* Institutional Architecture & Advantage Section (Bento Grid) */}
+          <section id="why-stockpilot" className="py-24 px-4 sm:px-6 relative z-10">
+            <div className="mx-auto max-w-6xl space-y-12">
+              {/* Section Header */}
+              <div className="text-center space-y-3 max-w-3xl mx-auto">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider bg-[#00D2FF]/10 text-[#00D2FF] border border-[#00D2FF]/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00D2FF] animate-pulse" />
+                  <span>Institutional Architecture</span>
+                </div>
                 <h2
-                  className={`text-3xl sm:text-4xl font-extrabold tracking-tight ${
+                  className={`text-3xl sm:text-5xl font-extrabold tracking-tight ${
                     isLight ? 'text-slate-900' : 'text-white'
                   }`}
                 >
-                  Traditional robo-advisors are slow. <br />
+                  Wall Street operates on legacy rails.{' '}
                   <span className={isLight ? 'text-sky-600' : 'text-[#00D2FF]'}>
-                    StockPilot runs in real time.
+                    StockPilot rebuilds it on Solana.
                   </span>
                 </h2>
-                <p className={`text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Wall Street closes at 4 PM. StockPilot monitors index drift 24/7 and keeps your
-                  portfolio perfectly balanced.
+                <p className={`text-sm sm:text-base leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                  Eliminate brokerage market closures, custodian seizure risk, and high management fees.
+                  StockPilot continuously executes non-custodial index rebalancing in sub-second Solana slots.
                 </p>
               </div>
 
-              {/* 3 Pillar Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Pillar 1: Cheaper */}
+              {/* Bento Grid Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                {/* BENTO CARD 1: TradFi vs StockPilot Direct Comparison Matrix */}
                 <div
-                  className={`rounded-3xl border p-6 space-y-4 transition ${
+                  className={`lg:col-span-12 rounded-3xl border p-6 sm:p-8 transition-all relative overflow-hidden backdrop-blur-xl ${
                     isLight
-                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-[#0B111C] border-[#1E293B] hover:border-[#334155]'
+                      ? 'bg-white/90 border-slate-200 shadow-lg shadow-slate-200/50'
+                      : 'bg-[#0A101D]/90 border-[#1E293B] shadow-2xl shadow-cyan-950/20'
                   }`}
                 >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                      isLight
-                        ? 'bg-sky-50 border-sky-200 text-sky-600'
-                        : 'bg-sky-500/10 border-sky-500/20 text-[#00D2FF]'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faBolt} className="w-5 h-5" />
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-white/5">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#00D2FF] font-bold">
+                        EXECUTION BENCHMARK
+                      </span>
+                      <h3 className={`text-xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                        TradFi Brokerages vs. StockPilot On-Chain
+                      </h3>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs font-mono">
+                      <span className="flex items-center gap-1.5 text-slate-400">
+                        <span className="w-2 h-2 rounded-full bg-slate-500" />
+                        Legacy Rails
+                      </span>
+                      <span className="flex items-center gap-1.5 text-[#00D2FF] font-semibold">
+                        <span className="w-2 h-2 rounded-full bg-[#00D2FF] animate-pulse" />
+                        Solana Native
+                      </span>
+                    </div>
                   </div>
-                  <h3 className={`text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    Cheaper
-                  </h3>
-                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                    No 2% management drag or hidden trading fees. Trades route through Jupiter Ultra for
-                    zero slippage and sub-cent Solana transactions.
-                  </p>
-                  <ul className="space-y-2 text-xs font-mono pt-2">
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        Fractional shares from $1
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        Zero custody markup
-                      </span>
-                    </li>
-                  </ul>
+
+                  {/* Comparison Rows */}
+                  <div className="mt-6 divide-y divide-slate-200/60 dark:divide-white/5">
+                    {/* Row 1 */}
+                    <div className="py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center text-xs">
+                      <div className="md:col-span-3 font-semibold text-slate-400 font-mono uppercase text-[11px]">
+                        Market Trading Hours
+                      </div>
+                      <div className={`md:col-span-4 font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        9:30 AM – 4:00 PM EST <span className="text-rose-400/80">(Closed weekends & holidays)</span>
+                      </div>
+                      <div className="md:col-span-5 font-mono font-bold flex items-center gap-2 text-emerald-400">
+                        <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>24/7/365 Continuous Liquidity · Zero Market Closes</span>
+                      </div>
+                    </div>
+
+                    {/* Row 2 */}
+                    <div className="py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center text-xs">
+                      <div className="md:col-span-3 font-semibold text-slate-400 font-mono uppercase text-[11px]">
+                        Asset Custody & Keys
+                      </div>
+                      <div className={`md:col-span-4 font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        Broker-held street name <span className="text-rose-400/80">(Subject to trading halts & freezes)</span>
+                      </div>
+                      <div className="md:col-span-5 font-mono font-bold flex items-center gap-2 text-emerald-400">
+                        <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>100% Non-Custodial Anchor PDA Vault (Only you hold keys)</span>
+                      </div>
+                    </div>
+
+                    {/* Row 3 */}
+                    <div className="py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center text-xs">
+                      <div className="md:col-span-3 font-semibold text-slate-400 font-mono uppercase text-[11px]">
+                        Rebalance Settlement Speed
+                      </div>
+                      <div className={`md:col-span-4 font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        T+1 / T+2 days + manual broker orders
+                      </div>
+                      <div className="md:col-span-5 font-mono font-bold flex items-center gap-2 text-[#00D2FF]">
+                        <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-[#00D2FF]" />
+                        <span>&lt; 400ms Sub-Second Atomic Rebalancing</span>
+                      </div>
+                    </div>
+
+                    {/* Row 4 */}
+                    <div className="py-4 grid grid-cols-1 md:grid-cols-12 gap-4 items-center text-xs">
+                      <div className="md:col-span-3 font-semibold text-slate-400 font-mono uppercase text-[11px]">
+                        Management Drag & Fees
+                      </div>
+                      <div className={`md:col-span-4 font-mono ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                        0.25% – 1.50% AUM annual drag + hidden spreads
+                      </div>
+                      <div className="md:col-span-5 font-mono font-bold flex items-center gap-2 text-emerald-400">
+                        <FontAwesomeIcon icon={faCheck} className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>0.00% Annual AUM Drag · ~$0.0008 Solana Network Gas</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Pillar 2: Simpler */}
+                {/* BENTO CARD 2: Autonomous Mathematical Drift Engine */}
                 <div
-                  className={`rounded-3xl border p-6 space-y-4 transition ${
+                  className={`lg:col-span-7 rounded-3xl border p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl relative overflow-hidden ${
                     isLight
-                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-[#0B111C] border-[#1E293B] hover:border-[#334155]'
+                      ? 'bg-white/90 border-slate-200 shadow-md shadow-slate-200/50'
+                      : 'bg-[#0B111C]/90 border-[#1E293B] shadow-xl'
                   }`}
                 >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                      isLight
-                        ? 'bg-sky-50 border-sky-200 text-sky-600'
-                        : 'bg-sky-500/10 border-sky-500/20 text-[#00D2FF]'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faArrowsRotate} className="w-5 h-5" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#00D2FF] font-bold">
+                        AUTONOMOUS DRIFT ENGINE
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        Real-Time Tracking
+                      </span>
+                    </div>
+                    <h3 className={`text-xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      Dynamic Weight Re-Centering
+                    </h3>
+                    <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                      When equities rally or drop, your asset allocations drift away from your target index balance.
+                      StockPilot continuously recalculates optimal buy/sell deltas and executes atomic rebalances via Jupiter DEX.
+                    </p>
                   </div>
-                  <h3 className={`text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    Simpler
-                  </h3>
-                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                    Pick a thematic strategy once. When an asset drifts beyond your ±5% threshold, 1-tap
-                    rebalances the entire vault back into perfect alignment.
-                  </p>
-                  <ul className="space-y-2 text-xs font-mono pt-2">
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        Automatic drift alerts
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        Atomic multi-token swap
-                      </span>
-                    </li>
-                  </ul>
+
+                  {/* Visual Drift Simulation Display */}
+                  <div className={`mt-6 p-4 rounded-2xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#06080F] border-[#1E293B]'}`}>
+                    <div className="flex items-center justify-between text-xs font-mono mb-2">
+                      <span className="text-slate-400">Drift Threshold: ±5.0%</span>
+                      <span className="text-amber-400 font-bold">+6.2% Drift Detected</span>
+                    </div>
+                    <div className="space-y-2.5 font-mono text-[11px]">
+                      <div>
+                        <div className="flex justify-between text-slate-300 mb-1">
+                          <span>xNVDA (Target: 35.0%)</span>
+                          <span className="text-[#00D2FF] font-bold">41.2% (Overweight)</span>
+                        </div>
+                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden flex">
+                          <div className="bg-[#00D2FF] h-full" style={{ width: '35%' }} />
+                          <div className="bg-amber-400 h-full animate-pulse" style={{ width: '6.2%' }} />
+                        </div>
+                      </div>
+                      <div className="pt-2 flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-800">
+                        <span>Action: Trim $62.00 xNVDA ➔ Allocate into xTSM & xAMD</span>
+                        <span className="text-emerald-400 font-semibold">1-Tap Ready</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Pillar 3: Smarter */}
+                {/* BENTO CARD 3: Real-Time Infrastructure Stack */}
                 <div
-                  className={`rounded-3xl border p-6 space-y-4 transition ${
+                  className={`lg:col-span-5 rounded-3xl border p-6 sm:p-8 flex flex-col justify-between transition-all backdrop-blur-xl relative overflow-hidden ${
                     isLight
-                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-[#0B111C] border-[#1E293B] hover:border-[#334155]'
+                      ? 'bg-white/90 border-slate-200 shadow-md shadow-slate-200/50'
+                      : 'bg-[#0B111C]/90 border-[#1E293B] shadow-xl'
                   }`}
                 >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${
-                      isLight
-                        ? 'bg-sky-50 border-sky-200 text-sky-600'
-                        : 'bg-sky-500/10 border-sky-500/20 text-[#00D2FF]'
-                    }`}
-                  >
-                    <FontAwesomeIcon icon={faRobot} className="w-5 h-5" />
+                  <div className="space-y-3">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#00D2FF] font-bold">
+                      SECURITY ARCHITECTURE
+                    </span>
+                    <h3 className={`text-xl font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      Verified DeFi Infrastructure
+                    </h3>
+                    <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+                      Engineered on Solana’s native SVM runtime for institutional reliability and speed.
+                    </p>
                   </div>
-                  <h3 className={`text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    Smarter
-                  </h3>
-                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                    Natural language AI thesis engine. Type any macroeconomic strategy to immediately
-                    synthesize a balanced, diversified tokenized equity basket.
-                  </p>
-                  <ul className="space-y-2 text-xs font-mono pt-2">
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        Prompt-to-Portfolio synthesis
+
+                  <div className="mt-6 space-y-3 font-mono text-xs">
+                    <div className={`p-3 rounded-xl border flex items-center justify-between ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#06080F] border-white/5'}`}>
+                      <div className="flex items-center gap-2.5">
+                        <FontAwesomeIcon icon={faShieldHalved} className="w-4 h-4 text-emerald-400" />
+                        <div>
+                          <div className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Anchor Vault PDA</div>
+                          <div className="text-[10px] text-slate-400">Cryptographic isolation per wallet</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-semibold">
+                        Non-Custodial
                       </span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <FontAwesomeIcon
-                        icon={faCheck}
-                        className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`}
-                      />
-                      <span className={isLight ? 'text-slate-700' : 'text-slate-300'}>
-                        On-chain risk parameters
+                    </div>
+
+                    <div className={`p-3 rounded-xl border flex items-center justify-between ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#06080F] border-white/5'}`}>
+                      <div className="flex items-center gap-2.5">
+                        <FontAwesomeIcon icon={faBolt} className="w-4 h-4 text-[#00D2FF]" />
+                        <div>
+                          <div className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Pyth Price Oracles</div>
+                          <div className="text-[10px] text-slate-400">Sub-second confidence intervals</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-[#00D2FF]/10 text-[#00D2FF] font-semibold">
+                        &lt; 400ms
                       </span>
-                    </li>
-                  </ul>
+                    </div>
+
+                    <div className={`p-3 rounded-xl border flex items-center justify-between ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#06080F] border-white/5'}`}>
+                      <div className="flex items-center gap-2.5">
+                        <FontAwesomeIcon icon={faArrowsRotate} className="w-4 h-4 text-sky-400" />
+                        <div>
+                          <div className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>Jupiter Ultra Routing</div>
+                          <div className="text-[10px] text-slate-400">Best execution across Solana DEXs</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 font-semibold">
+                        Optimized
+                      </span>
+                    </div>
+                  </div>
                 </div>
+
               </div>
             </div>
           </section>
