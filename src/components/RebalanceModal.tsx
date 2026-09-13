@@ -268,6 +268,12 @@ export default function RebalanceModal({
                 <span>Routing Engine:</span>
                 <span className="font-semibold">Zero Slippage Atomic Swap</span>
               </div>
+              <div className="flex items-center justify-between border-t pt-1.5 border-slate-200/50 dark:border-white/5">
+                <span>Protocol Fee (0.15%):</span>
+                <span className="font-mono text-[#00D2FF] font-semibold">
+                  ${(totalValueUsdc * 0.0015).toFixed(2)} USDC
+                </span>
+              </div>
             </div>
 
             {/* Actions */}

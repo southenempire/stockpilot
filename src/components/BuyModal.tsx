@@ -17,7 +17,7 @@ import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } from '@solana/web3.js';
 import { BasketStrategy, Stock } from '@/types/stock';
 import { SUPPORTED_STOCKS } from '@/data/stocks';
-import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
+import { derivePortfolioVaultPda, PROTOCOL_TREASURY_WALLET, PROTOCOL_FEE_BPS } from '@/lib/solana/vault-program';
 
 interface BuyModalProps {
   isOpen: boolean;
@@ -161,15 +161,29 @@ export default function BuyModal({
       // 2. Build real Solana Transaction
       const transaction = new Transaction();
       
-      const lamportsToSend = paymentAsset === 'SOL'
-        ? Math.max(1000, Math.floor(amountSol * LAMPORTS_PER_SOL))
+      const totalLamports = paymentAsset === 'SOL'
+        ? Math.max(2000, Math.floor(amountSol * LAMPORTS_PER_SOL))
         : 10000;
 
+      // 0.15% (15 bps) Protocol Treasury Fee Calculation
+      const feeLamports = Math.max(1000, Math.floor(totalLamports * (PROTOCOL_FEE_BPS / 10000)));
+      const netVaultLamports = Math.max(1000, totalLamports - feeLamports);
+
+      // Instruction 1: 99.85% deposit into User's Non-Custodial Vault PDA
       transaction.add(
         SystemProgram.transfer({
           fromPubkey: publicKey,
           toPubkey: vaultPda,
-          lamports: lamportsToSend,
+          lamports: netVaultLamports,
+        })
+      );
+
+      // Instruction 2: 0.15% Protocol Fee directly to StockPilot Treasury Wallet
+      transaction.add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: PROTOCOL_TREASURY_WALLET,
+          lamports: feeLamports,
         })
       );
 
@@ -526,6 +540,16 @@ export default function BuyModal({
                 <div className="flex justify-between text-[11px] text-slate-400">
                   <span>Estimated Solana Gas:</span>
                   <span>&lt; 0.00005 SOL (~$0.0008)</span>
+                </div>
+                <div className="flex justify-between text-[11px] text-slate-400">
+                  <span>StockPilot Fee (0.15%):</span>
+                  <span className="text-[#00D2FF] font-semibold">${(amountUsdc * 0.0015).toFixed(3)} USDC</span>
+                </div>
+                <div className={`flex justify-between text-[11px] font-bold pt-1.5 border-t ${isLight ? 'border-slate-200 text-slate-900' : 'border-white/5 text-white'}`}>
+                  <span>Net Vault Investment:</span>
+                  <span className={isLight ? 'text-slate-900' : 'text-white'}>
+                    ${(amountUsdc * 0.9985).toFixed(2)} USDC
+                  </span>
                 </div>
               </div>
 

@@ -4,6 +4,30 @@ import { PublicKey } from '@solana/web3.js';
 export const VAULT_SEED_PREFIX = 'stockpilot_vault';
 export const PORTFOLIO_STATE_PREFIX = 'stockpilot_portfolio';
 
+// StockPilot Protocol Treasury Wallet & Monetization Engine
+// 15 basis points = 0.15% protocol fee transferred on-chain directly to treasury on every trade & rebalance
+export const PROTOCOL_FEE_BPS = 15; // 0.15%
+export const PROTOCOL_TREASURY_WALLET = new PublicKey(
+  process.env.NEXT_PUBLIC_TREASURY_WALLET_ADDRESS || '2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo'
+);
+
+export function calculateProtocolFee(amount: number): {
+  grossAmount: number;
+  feeAmount: number;
+  netAmount: number;
+  feePercent: number;
+} {
+  const feePercent = PROTOCOL_FEE_BPS / 10000; // 0.0015
+  const feeAmount = amount * feePercent;
+  const netAmount = amount - feeAmount;
+  return {
+    grossAmount: amount,
+    feeAmount,
+    netAmount,
+    feePercent: 0.15,
+  };
+}
+
 // Cooldown interval between automated rebalances to protect user from excessive slippage
 export const DEFAULT_REBALANCE_COOLDOWN_SECONDS = 3600; // 1 hour
 
