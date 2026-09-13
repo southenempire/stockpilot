@@ -14,6 +14,7 @@ import RebalanceModal from '@/components/RebalanceModal';
 import BuyModal from '@/components/BuyModal';
 import SocialFlexCardModal from '@/components/SocialFlexCardModal';
 import PromptModal from '@/components/PromptModal';
+import TourModal from '@/components/TourModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import StockPilotLogo from '@/components/StockPilotLogo';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -22,6 +23,7 @@ import { LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBolt,
+  faCompass,
   faArrowsRotate,
   faArrowTrendUp,
   faArrowTrendDown,
@@ -145,7 +147,18 @@ export default function StockPilotApp() {
   const [isRebalanceModalOpen, setIsRebalanceModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
   const [buyTargetBasket, setBuyTargetBasket] = useState<BasketStrategy | null>(null);
+
+  // First-time visitor onboarding tour auto-detection
+  useEffect(() => {
+    try {
+      const tourDismissed = localStorage.getItem('stockpilot_tour_dismissed');
+      if (!tourDismissed) {
+        setIsTourOpen(true);
+      }
+    } catch {}
+  }, []);
   const [buyTargetStock, setBuyTargetStock] = useState<Stock | null>(null);
   const [marketExploreView, setMarketExploreView] = useState<'baskets' | 'stocks'>('baskets');
   const [customThesis, setCustomThesis] = useState('');
@@ -1676,7 +1689,21 @@ export default function StockPilotApp() {
           </div>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Interactive Tour Guide Button */}
+            <button
+              onClick={() => setIsTourOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold font-mono border transition cursor-pointer ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-[#00D2FF]'
+              }`}
+              title="Open StockPilot Onboarding Tour"
+            >
+              <FontAwesomeIcon icon={faCompass} className="w-3.5 h-3.5 text-[#00D2FF]" />
+              <span className="hidden sm:inline">Tour</span>
+            </button>
+
             {/* Theme Toggle Button */}
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
@@ -2237,6 +2264,16 @@ export default function StockPilotApp() {
         onClose={() => setIsPromptOpen(false)}
         onSelectStrategy={(s) => {
           handleSelectStrategy(s);
+          setActiveTab('portfolio');
+        }}
+        theme={theme}
+      />
+
+      <TourModal
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        onStartDemo={() => {
+          setIsDemoMode(true);
           setActiveTab('portfolio');
         }}
         theme={theme}
