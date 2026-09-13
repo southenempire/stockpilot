@@ -1650,42 +1650,44 @@ export default function StockPilotApp() {
               <StockPilotLogo size={36} showText={true} theme={theme} />
             </div>
 
-            {/* Desktop Nav Links */}
-            <nav className="hidden md:flex items-center gap-1">
-              <button
-                onClick={() => {
-                  setViewMode('website');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  viewMode === 'website'
-                    ? isLight
-                      ? 'bg-slate-200/80 text-slate-900 font-bold'
-                      : 'bg-white/10 text-white font-bold'
-                    : isLight
-                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => {
-                  if (viewMode !== 'website') setViewMode('website');
-                  setTimeout(() => {
-                    const el = document.getElementById('why-stockpilot');
-                    el?.scrollIntoView({ behavior: 'smooth' });
-                  }, 100);
-                }}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                  isLight
-                    ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
-                Features
-              </button>
-            </nav>
+            {/* Desktop Nav Links (Only visible on landing page) */}
+            {viewMode === 'website' && (
+              <nav className="hidden md:flex items-center gap-1">
+                <button
+                  onClick={() => {
+                    setViewMode('website');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    viewMode === 'website'
+                      ? isLight
+                        ? 'bg-slate-200/80 text-slate-900 font-bold'
+                        : 'bg-white/10 text-white font-bold'
+                      : isLight
+                      ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  Overview
+                </button>
+                <button
+                  onClick={() => {
+                    if (viewMode !== 'website') setViewMode('website');
+                    setTimeout(() => {
+                      const el = document.getElementById('why-stockpilot');
+                      el?.scrollIntoView({ behavior: 'smooth' });
+                    }, 100);
+                  }}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                    isLight
+                      ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                      : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  Features
+                </button>
+              </nav>
+            )}
           </div>
 
           {/* Right Header Actions */}
