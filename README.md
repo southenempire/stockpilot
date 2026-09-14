@@ -94,6 +94,15 @@ The core protocol is implemented in Rust using the Anchor framework on Solana.
 * Contract Authority: `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb`
 * Protocol Treasury: `2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo`
 
+### Verified On-Chain Transactions (Solana Devnet)
+
+| Operation | Transaction Signature | Solscan Receipt | Status |
+| :--- | :--- | :--- | :--- |
+| **Initialize Vault** | `4Vff2RFdsqCKDg...` | [View on Solscan](https://solscan.io/tx/4Vff2RFdsqCKDgMatUvLHa9coVtMdRhDz6iC4iKbKKXZr4XSCGtiFQJNzPSbvFL48m5YrP21faGHi6krdi3Jaip?cluster=devnet) | Confirmed |
+| **Deposit (0.05 SOL)** | `52pz4cfvEHoowJ...` | [View on Solscan](https://solscan.io/tx/52pz4cfvEHoowJJ9vu1jsH27bkR2ZZpa5KuK5FBibAy5yLvj8qZBnmUkZXPjVvAXMa5wQDdyZY27yAwhBFWB4vyq?cluster=devnet) | Confirmed |
+| **Timelock Cooldown Check** | Enforced On-Chain | `RebalanceCooldownActive (0x1770)` | Verified |
+| **Withdraw (0.02 SOL)** | `3xTgasBWSciZw1...` | [View on Solscan](https://solscan.io/tx/3xTgasBWSciZw1zBMuYX23xnW978fNHDFGdHhE8d9K45qynBp6CHKMezPY92XWzH144MY4fewSoDb6fzkELHwnMR?cluster=devnet) | Confirmed |
+
 ### Invariants and Security Boundaries
 1. Isolated PDA Vaults: Vault addresses are deterministically derived via `Pubkey::find_program_address(&[b"stockpilot_vault", authority.key().as_ref()], program_id)`. Only the matching user authority can sign withdrawal and rebalance instructions (`constraint = authority.key() == vault.owner`).
 2. Token Account Validation: `Deposit` and `Withdraw` instructions strictly validate that token accounts match the vault PDA ownership (`vault_token_account.owner == vault.key()`) and expected token mints.
