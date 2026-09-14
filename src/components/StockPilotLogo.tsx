@@ -80,15 +80,15 @@ export default function StockPilotLogo({
       {showText && (
         <div className="flex flex-col leading-none">
           <div className="flex items-center gap-1.5">
-            <span className="font-extrabold tracking-tight text-base sm:text-lg">
+            <span className="font-extrabold tracking-tight text-sm sm:text-lg whitespace-nowrap">
               <span className={isLight ? 'text-slate-900' : 'text-white'}>STOCK</span>
               <span className="text-[#00D2FF] drop-shadow-[0_0_8px_rgba(0,210,255,0.4)]">PILOT</span>
             </span>
-            <span className="text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-500/10 text-[#00D2FF] border border-sky-500/20 font-bold">
+            <span className="hidden sm:inline-block text-[9px] font-mono uppercase tracking-widest px-1.5 py-0.5 rounded bg-sky-500/10 text-[#00D2FF] border border-sky-500/20 font-bold">
               SOLANA
             </span>
           </div>
-          <span className={`text-[9px] tracking-wider uppercase font-mono mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          <span className={`hidden sm:block text-[9px] tracking-wider uppercase font-mono mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
             Autonomous Equities
           </span>
         </div>

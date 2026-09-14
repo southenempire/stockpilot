@@ -49,6 +49,8 @@ import {
   faWallet,
   faEnvelope,
   faRightFromBracket,
+  faBars,
+  faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { faXTwitter, faGithub, faTelegram } from '@fortawesome/free-brands-svg-icons';
 import { usePrivy } from '@privy-io/react-auth';
@@ -198,6 +200,7 @@ export default function StockPilotApp() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [buyTargetBasket, setBuyTargetBasket] = useState<BasketStrategy | null>(null);
   const [buyTargetStock, setBuyTargetStock] = useState<Stock | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Launch app directly without triggering tour modal
   const handleLaunchApp = (options?: { isDemo?: boolean }) => {
@@ -1919,20 +1922,23 @@ export default function StockPilotApp() {
         }`}
       />
 
-      {/* Main Header (Clean, Minimalist, No spammy banners) */}
+      {/* Main Header (Clean, Minimalist, Responsive with Mobile Hamburger Drawer) */}
       <header
         className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-colors ${
-          isLight ? 'bg-white/90 border-slate-200 shadow-sm' : 'bg-[#06080F]/90 border-[#1E293B]'
+          isLight ? 'bg-white/95 border-slate-200 shadow-sm' : 'bg-[#06080F]/95 border-[#1E293B]'
         }`}
       >
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-3 sm:px-6">
           {/* Brand Logo */}
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-6">
             <div
-              onClick={() => setViewMode('website')}
-              className="cursor-pointer group"
+              onClick={() => {
+                setViewMode('website');
+                setIsMobileMenuOpen(false);
+              }}
+              className="cursor-pointer group shrink-0"
             >
-              <StockPilotLogo size={36} showText={true} theme={theme} />
+              <StockPilotLogo size={34} showText={true} theme={theme} />
             </div>
 
             {/* Desktop Nav Links (Only visible on landing page) */}
@@ -1976,82 +1982,277 @@ export default function StockPilotApp() {
           </div>
 
           {/* Right Header Actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Theme Toggle Button */}
-            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <div className="flex items-center gap-2">
+            {/* Desktop Actions (Hidden on Mobile) */}
+            <div className="hidden md:flex items-center gap-3">
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
-            {viewMode === 'website' ? (
+              {viewMode === 'website' ? (
+                <button
+                  onClick={() => handleLaunchApp()}
+                  className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 cursor-pointer shadow-lg ${
+                    isLight
+                      ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
+                      : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
+                  }`}
+                >
+                  <span>Launch App</span>
+                  <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setViewMode('website')}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                    isLight
+                      ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      : 'bg-white/10 hover:bg-white/15 text-slate-200'
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
+                  <span>Overview</span>
+                </button>
+              )}
+
+              {privyAuthenticated && privyUser ? (
+                <div className="flex items-center gap-2 bg-[#00D2FF]/10 border border-[#00D2FF]/30 rounded-xl px-3 py-1.5 text-xs font-mono">
+                  <FontAwesomeIcon icon={faEnvelope} className="w-3.5 h-3.5 text-[#00D2FF]" />
+                  <span className="max-w-[140px] truncate text-slate-200 font-semibold">
+                    {privyUser.email?.address || privyUser.google?.email || (privySolanaAddress ? `${privySolanaAddress.slice(0, 4)}...${privySolanaAddress.slice(-4)}` : 'Logged In')}
+                  </span>
+                  <button
+                    onClick={() => privyLogout()}
+                    title="Sign Out"
+                    className="ml-1 text-slate-400 hover:text-rose-400 transition cursor-pointer p-0.5"
+                  >
+                    <FontAwesomeIcon icon={faRightFromBracket} className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => privyLogin()}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm ${
+                      isLight
+                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                        : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
+                    }`}
+                    title="Sign in with Email or Google (Instant Embedded Wallet)"
+                  >
+                    <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-[#00D2FF]" />
+                    <span>Email Login</span>
+                  </button>
+
+                  <div className="scale-95">
+                    <WalletMultiButton
+                      style={{
+                        backgroundColor: isLight ? '#0F172A' : '#101929',
+                        border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
+                        borderRadius: '0.75rem',
+                        height: '36px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Actions (Compact Theme + App Launch + Hamburger Menu) */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <ThemeToggle theme={theme} onToggle={toggleTheme} compact={true} />
+
+              {viewMode === 'website' ? (
+                <button
+                  onClick={() => handleLaunchApp()}
+                  className={`flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-md ${
+                    isLight
+                      ? 'bg-sky-600 text-white hover:bg-sky-700'
+                      : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8]'
+                  }`}
+                >
+                  <span>App</span>
+                  <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5" />
+                </button>
+              ) : (
+                <button
+                  onClick={() => setViewMode('website')}
+                  className={`flex items-center gap-1 px-2.5 py-2 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                    isLight
+                      ? 'bg-slate-100 border-slate-200 text-slate-700'
+                      : 'bg-white/10 border-white/10 text-slate-200'
+                  }`}
+                >
+                  <FontAwesomeIcon icon={faChevronLeft} className="w-2.5 h-2.5" />
+                  <span>Site</span>
+                </button>
+              )}
+
+              {/* Hamburger Button */}
               <button
-                onClick={() => handleLaunchApp()}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 cursor-pointer shadow-lg ${
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                aria-label="Toggle Menu"
+                className={`p-2 w-9 h-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                  isMobileMenuOpen
+                    ? isLight
+                      ? 'bg-slate-200 border-slate-300 text-slate-900'
+                      : 'bg-[#1E293B] border-[#00D2FF]/40 text-[#00D2FF]'
+                    : isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                    : 'bg-[#0A101D] border-[#1E293B] text-slate-300 hover:text-white hover:bg-[#131C2E]'
+                }`}
+              >
+                <FontAwesomeIcon icon={isMobileMenuOpen ? faXmark : faBars} className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Dropdown Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div
+            className={`md:hidden border-b px-4 py-4 space-y-3 backdrop-blur-2xl transition-all shadow-2xl ${
+              isLight ? 'bg-white/98 border-slate-200 shadow-slate-200/50' : 'bg-[#06080F]/98 border-[#1E293B] shadow-black/80'
+            }`}
+          >
+            {/* Quick Launch Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  handleLaunchApp();
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs transition cursor-pointer shadow-md ${
                   isLight
-                    ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
+                    ? 'bg-sky-600 text-white hover:bg-sky-700'
                     : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
                 }`}
               >
+                <FontAwesomeIcon icon={faMobileScreen} className="w-3.5 h-3.5" />
                 <span>Launch App</span>
-                <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3" />
               </button>
-            ) : (
+
               <button
-                onClick={() => setViewMode('website')}
-                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                onClick={() => {
+                  handleLaunchApp({ isDemo: true });
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs transition cursor-pointer border ${
                   isLight
-                    ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    : 'bg-white/10 hover:bg-white/15 text-slate-200'
+                    ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
+                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
                 }`}
               >
-                <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
-                <span>Overview</span>
+                <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-amber-400" />
+                <span>$10K Demo</span>
               </button>
-            )}
+            </div>
 
-            {privyAuthenticated && privyUser ? (
-              <div className="flex items-center gap-2 bg-[#00D2FF]/10 border border-[#00D2FF]/30 rounded-xl px-3 py-1.5 text-xs font-mono">
-                <FontAwesomeIcon icon={faEnvelope} className="w-3.5 h-3.5 text-[#00D2FF]" />
-                <span className="max-w-[120px] sm:max-w-[160px] truncate text-slate-200 font-semibold">
-                  {privyUser.email?.address || privyUser.google?.email || (privySolanaAddress ? `${privySolanaAddress.slice(0, 4)}...${privySolanaAddress.slice(-4)}` : 'Logged In')}
+            {/* Navigation Links */}
+            <div className="space-y-1 pt-1 font-mono text-xs">
+              <button
+                onClick={() => {
+                  setViewMode('website');
+                  setIsMobileMenuOpen(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl transition cursor-pointer ${
+                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-slate-300'
+                }`}
+              >
+                <span>Overview & Hero</span>
+                <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 text-slate-500" />
+              </button>
+
+              <button
+                onClick={() => {
+                  if (viewMode !== 'website') setViewMode('website');
+                  setIsMobileMenuOpen(false);
+                  setTimeout(() => {
+                    document.getElementById('why-stockpilot')?.scrollIntoView({ behavior: 'smooth' });
+                  }, 150);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl transition cursor-pointer ${
+                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-slate-300'
+                }`}
+              >
+                <span>Institutional Features</span>
+                <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 text-slate-500" />
+              </button>
+
+              <a
+                href="https://github.com/southenempire/stockpilot"
+                target="_blank"
+                rel="noreferrer"
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl transition cursor-pointer ${
+                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-slate-300'
+                }`}
+              >
+                <span className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faGithub} className="w-3.5 h-3.5" />
+                  GitHub Repository
                 </span>
-                <button
-                  onClick={() => privyLogout()}
-                  title="Sign Out"
-                  className="ml-1 text-slate-400 hover:text-rose-400 transition cursor-pointer p-0.5"
-                >
-                  <FontAwesomeIcon icon={faRightFromBracket} className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => privyLogin()}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm ${
-                    isLight
-                      ? 'bg-slate-900 text-white hover:bg-slate-800'
-                      : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
-                  }`}
-                  title="Sign in with Email or Google (Instant Embedded Wallet)"
-                >
-                  <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-[#00D2FF]" />
-                  <span className="hidden sm:inline">Email Login</span>
-                </button>
+                <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 text-slate-500" />
+              </a>
+            </div>
 
-                <div className="scale-95">
-                  <WalletMultiButton
-                    style={{
-                      backgroundColor: isLight ? '#0F172A' : '#101929',
-                      border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
-                      borderRadius: '0.75rem',
-                      height: '36px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      color: '#FFFFFF',
+            {/* Wallet / Auth section in Drawer */}
+            <div className="pt-2 border-t border-white/5 flex flex-col gap-2">
+              {privyAuthenticated && privyUser ? (
+                <div className="flex items-center justify-between p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/20 text-xs font-mono">
+                  <div className="flex items-center gap-2 truncate">
+                    <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-[#00D2FF]" />
+                    <span className="truncate text-slate-200">
+                      {privyUser.email?.address || privyUser.google?.email || (privySolanaAddress ? `${privySolanaAddress.slice(0, 4)}...${privySolanaAddress.slice(-4)}` : 'Logged In')}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      privyLogout();
+                      setIsMobileMenuOpen(false);
                     }}
-                  />
+                    className="text-rose-400 hover:underline text-[11px] font-bold shrink-0 ml-2 cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
                 </div>
-              </div>
-            )}
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      privyLogin();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      isLight
+                        ? 'bg-slate-900 text-white hover:bg-slate-800'
+                        : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
+                    }`}
+                  >
+                    <FontAwesomeIcon icon={faEnvelope} className="w-3.5 h-3.5 text-[#00D2FF]" />
+                    <span>Sign In with Email / Google</span>
+                  </button>
+                  <div className="flex justify-center w-full">
+                    <WalletMultiButton
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        backgroundColor: isLight ? '#0F172A' : '#101929',
+                        border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
+                        borderRadius: '0.75rem',
+                        height: '38px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       {/* VIEW MODE 1: PRODUCT LANDING PAGE */}
