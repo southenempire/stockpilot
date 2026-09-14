@@ -2653,6 +2653,7 @@ export default function StockPilotApp() {
         realUsdcBalance={realUsdcBalance}
         solPriceUsd={solPriceUsd}
         theme={theme}
+        isDemoMode={isDemoMode}
         onBuySuccess={handleBuySuccess}
       />
 

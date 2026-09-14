@@ -29,6 +29,7 @@ interface BuyModalProps {
   realUsdcBalance: number | null;
   solPriceUsd: number;
   theme?: 'dark' | 'light';
+  isDemoMode?: boolean;
   onBuySuccess: (params: {
     type: 'basket' | 'stock';
     item: BasketStrategy | Stock;
@@ -48,6 +49,7 @@ export default function BuyModal({
   realUsdcBalance,
   solPriceUsd,
   theme = 'dark',
+  isDemoMode = false,
   onBuySuccess,
 }: BuyModalProps) {
   const isLight = theme === 'light';
@@ -56,15 +58,26 @@ export default function BuyModal({
   const { connection } = useConnection();
 
   // Payment method: USDC or SOL (default to SOL for direct user wallet buy)
-  const [paymentAsset, setPaymentAsset] = useState<'USDC' | 'SOL'>('SOL');
-  const [amountInput, setAmountInput] = useState<string>('0.01');
+  const [paymentAsset, setPaymentAsset] = useState<'USDC' | 'SOL'>('USDC');
+  const [amountInput, setAmountInput] = useState<string>('100');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mismatchedAccount, setMismatchedAccount] = useState<string | null>(null);
   // Execution mode: 'mainnet' (on-chain Solana) or 'sandbox' (simulated)
-  const [executionMode, setExecutionMode] = useState<'sandbox' | 'mainnet'>('mainnet');
+  const [executionMode, setExecutionMode] = useState<'sandbox' | 'mainnet'>('sandbox');
+
+  // Sync executionMode when modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      if (isDemoMode || !connected) {
+        setExecutionMode('sandbox');
+      } else {
+        setExecutionMode('mainnet');
+      }
+    }
+  }, [isOpen, isDemoMode, connected]);
 
   // Detect if Phantom / Solflare extension has a different active account than the connected session
   React.useEffect(() => {
@@ -133,7 +146,14 @@ export default function BuyModal({
   const amountSol = paymentAsset === 'SOL' ? parsedAmount : parsedAmount / (solPriceUsd || 138.5);
 
   // Available balance
-  const availableBalance = paymentAsset === 'USDC' ? realUsdcBalance || 0 : realSolBalance || 0;
+  const availableBalance =
+    executionMode === 'sandbox'
+      ? paymentAsset === 'USDC'
+        ? 10000
+        : 10
+      : paymentAsset === 'USDC'
+      ? realUsdcBalance || 0
+      : realSolBalance || 0;
 
   // Single stock shares estimate
   const singleStockShares = useMemo(() => {
@@ -406,7 +426,7 @@ export default function BuyModal({
                         <span className="text-[10px] text-slate-400">({targetStock.name})</span>
                       </div>
                       <div className="text-[11px] font-mono text-slate-400">
-                        ${targetStock.price.toFixed(2)} · Live Pyth
+                        ${targetStock.price.toFixed(2)} · Market Quote
                       </div>
                     </div>
                   </div>
