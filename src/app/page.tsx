@@ -708,40 +708,6 @@ export default function StockPilotApp() {
         {/* TAB 1: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <div className="space-y-4">
-            {/* Guided Judge Loop Breadcrumb Banner */}
-            <div
-              className={`rounded-xl border p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono ${
-                isLight
-                  ? 'bg-sky-50/80 border-sky-200 text-sky-900 shadow-sm'
-                  : 'bg-[#00D2FF]/5 border-[#00D2FF]/20 text-slate-300'
-              }`}
-            >
-              <div className="flex items-center gap-1.5 font-bold">
-                <span className="inline-block w-2 h-2 rounded-full bg-[#00D2FF] animate-pulse" />
-                <span className="text-[#00D2FF]">90s Judge Flow:</span>
-              </div>
-              <div className="flex items-center flex-wrap gap-1 text-[10px]">
-                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-amber-300">
-                  1. Shock Market
-                </span>
-                <span className="text-slate-500">&rarr;</span>
-                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-cyan-300">
-                  2. Observe Drift
-                </span>
-                <span className="text-slate-500">&rarr;</span>
-                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-emerald-300">
-                  3. Auto-Rebalance
-                </span>
-                <span className="text-slate-500">&rarr;</span>
-                <button
-                  onClick={() => setActiveTab('vault')}
-                  className="px-1.5 py-0.5 rounded bg-[#00D2FF]/20 border border-[#00D2FF]/30 text-[#00D2FF] font-bold hover:underline cursor-pointer"
-                >
-                  4. View Solscan Proof ↗
-                </button>
-              </div>
-            </div>
-
             {activeDemo ? (
               /* ================= DEMO SANDBOX ENVIRONMENT (STRICTLY OPT-IN) ================= */
               <>
