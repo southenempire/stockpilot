@@ -191,6 +191,14 @@ export default function BuyModal({
   };
 
   const handleMaxAmount = () => {
+    if (executionMode === 'sandbox') {
+      if (paymentAsset === 'USDC') {
+        setAmountInput('10000');
+      } else {
+        setAmountInput('10');
+      }
+      return;
+    }
     if (paymentAsset === 'USDC') {
       setAmountInput((realUsdcBalance || 0).toFixed(2));
     } else {
@@ -740,10 +748,10 @@ export default function BuyModal({
         {/* Footer Actions */}
         {!txSuccess && (
           <div className="pt-3 border-t border-slate-200/50 dark:border-white/5 shrink-0">
-            {connected ? (
+            {connected || executionMode === 'sandbox' ? (
               <button
                 onClick={handleExecuteBuy}
-                disabled={isSubmitting}
+                disabled={isSubmitting || parsedAmount <= 0}
                 className={`w-full py-3.5 rounded-2xl font-bold text-xs transition active:scale-95 cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
                   isSubmitting
                     ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
