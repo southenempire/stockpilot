@@ -704,7 +704,7 @@ export default function StockPilotApp() {
       </div>
 
       {/* Main Scrollable Content (Constrained with min-h-0 so ONLY this area scrolls internally) */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 pb-8">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full p-4 space-y-4 pb-8">
         {/* TAB 1: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <div className="space-y-4">
@@ -852,34 +852,34 @@ export default function StockPilotApp() {
                   </div>
 
                   {/* Quick Action Bar */}
-                  <div className={`mt-4 pt-3 border-t grid grid-cols-4 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
+                  <div className={`mt-4 pt-3 border-t grid grid-cols-4 gap-1.5 sm:gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
                     <button
                       onClick={() => setIsDepositOpen(true)}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
+                      className={`flex items-center justify-center gap-1 rounded-xl py-2 px-1 text-[10px] sm:text-xs font-semibold transition cursor-pointer min-w-0 ${
                         isLight
                           ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                           : 'bg-white/5 hover:bg-white/10 text-slate-200'
                       }`}
                     >
-                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 rotate-45 text-emerald-400" />
-                      <span>Deposit</span>
+                      <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 rotate-45 text-emerald-400 shrink-0" />
+                      <span className="truncate">Deposit</span>
                     </button>
 
                     <button
                       onClick={() => setIsWithdrawOpen(true)}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
+                      className={`flex items-center justify-center gap-1 rounded-xl py-2 px-1 text-[10px] sm:text-xs font-semibold transition cursor-pointer min-w-0 ${
                         isLight
                           ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                           : 'bg-white/5 hover:bg-white/10 text-slate-200'
                       }`}
                     >
-                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 -rotate-45 text-purple-400" />
-                      <span>Withdraw</span>
+                      <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 -rotate-45 text-purple-400 shrink-0" />
+                      <span className="truncate">Withdraw</span>
                     </button>
 
                     <button
                       onClick={() => setIsRebalanceModalOpen(true)}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm ${
+                      className={`flex items-center justify-center gap-1 rounded-xl py-2 px-1 text-[10px] sm:text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm min-w-0 ${
                         driftAnalysis.hasDrift
                           ? isLight
                             ? 'bg-sky-600 text-white shadow-sky-600/20'
@@ -889,24 +889,24 @@ export default function StockPilotApp() {
                           : 'bg-white/10 hover:bg-white/15 text-slate-200'
                       }`}
                     >
-                      <FontAwesomeIcon icon={faArrowsRotate} className="w-3 h-3" />
-                      <span>Rebalance</span>
+                      <FontAwesomeIcon icon={faArrowsRotate} className="w-2.5 h-2.5 shrink-0" />
+                      <span className="truncate">Rebalance</span>
                     </button>
 
                     <button
                       onClick={() => setIsShareModalOpen(true)}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
+                      className={`flex items-center justify-center gap-1 rounded-xl py-2 px-1 text-[10px] sm:text-xs font-semibold transition cursor-pointer min-w-0 ${
                         isLight
                           ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
                           : 'bg-white/5 hover:bg-white/10 text-slate-200'
                       }`}
                     >
-                      <FontAwesomeIcon icon={faShareNodes} className="w-3 h-3 text-sky-400" />
-                      <span>Share</span>
+                      <FontAwesomeIcon icon={faShareNodes} className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                      <span className="truncate">Share</span>
                     </button>
-                    </div>
                   </div>
                 </div>
+              </div>
 
                 {/* Visual Asset Allocation Bar */}
                 <div
@@ -1898,7 +1898,7 @@ export default function StockPilotApp() {
 
   return (
     <div
-      className={`min-h-screen relative transition-colors ${
+      className={`min-h-screen relative transition-colors max-w-full overflow-x-hidden w-full ${
         viewMode === 'app' ? 'h-screen overflow-hidden' : ''
       } ${
         isLight
