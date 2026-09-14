@@ -6,6 +6,7 @@ declare_id!("CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK");
 pub const VAULT_SEED: &[u8] = b"stockpilot_vault";
 pub const DEFAULT_COOLDOWN_SECONDS: i64 = 300; // 5 minute demo cooldown
 pub const PROTOCOL_FEE_BPS: u64 = 15; // 0.15% protocol fee (15 bps of 10,000)
+pub const PROTOCOL_TREASURY_PUBKEY: Pubkey = pubkey!("2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo");
 
 #[program]
 pub mod stockpilot {
@@ -200,6 +201,7 @@ pub struct Deposit<'info> {
     #[account(
         mut,
         constraint = treasury_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+        constraint = treasury_token_account.owner == PROTOCOL_TREASURY_PUBKEY @ StockPilotError::Unauthorized,
     )]
     pub treasury_token_account: InterfaceAccount<'info, TokenAccount>,
 

@@ -98,7 +98,7 @@ The core protocol is implemented in Rust using the Anchor framework on Solana.
 1. Isolated PDA Vaults: Vault addresses are deterministically derived via `Pubkey::find_program_address(&[b"stockpilot_vault", authority.key().as_ref()], program_id)`. Only the matching user authority can sign withdrawal and rebalance instructions (`constraint = authority.key() == vault.owner`).
 2. Token Account Validation: `Deposit` and `Withdraw` instructions strictly validate that token accounts match the vault PDA ownership (`vault_token_account.owner == vault.key()`) and expected token mints.
 3. On-Chain State & Timelock Coordinator: The contract acts as the on-chain state and cooldown coordinator, enforcing that `now >= vault.last_rebalance_ts + cooldown_seconds` (5-minute cooldown) before updating state counters, while multi-token swap execution is routed atomically via Jupiter on the client.
-4. On-Chain Protocol Fee Deduction: The deposit instruction calculates a 0.15% protocol fee (15 basis points) and transfers it directly to the protocol treasury token account via CPI, with the remaining 99.85% net amount secured in the user's isolated PDA vault.
+4. On-Chain Protocol Fee Deduction & Treasury Enforcement: The deposit instruction calculates a 0.15% protocol fee (15 basis points) and transfers it directly to the protocol treasury token account via CPI, with strict ownership verification ensuring `treasury_token_account.owner == PROTOCOL_TREASURY_PUBKEY` to prevent fee redirection. The remaining 99.85% net amount is secured in the user's isolated PDA vault.
 
 ---
 
