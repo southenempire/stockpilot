@@ -5,7 +5,7 @@ import SolanaWalletProvider from '@/components/SolanaWalletProvider';
 import PrivyWalletProvider from '@/components/PrivyWalletProvider';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://stockpilot.trade'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://stockpilotsol.xyz'),
   title: 'StockPilot | Autonomous 24/7 AI Stock Robo-Advisor on Solana',
   description: '1-Tap Algorithmic Thematic Stock Baskets with Autonomous AI Rebalancing on Solana Mainnet. Invest and trade tokenized US equities 24/7.',
   openGraph: {
@@ -14,8 +14,15 @@ export const metadata: Metadata = {
     images: ['/stockpilot_logo.jpg'],
   },
   icons: {
-    icon: '/stockpilot_logo.jpg',
-    apple: '/stockpilot_logo.jpg',
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
   },
 };
 

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <rect width="48" height="48" rx="12" fill="#0B111C" stroke="#1E293B" stroke-width="1.5"/>
+  <path d="M12 29L18 20L23 26L33 13L35 18" stroke="url(#stockpilot-aero-grad)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13 21L19 15L27 15" stroke="#38BDF8" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M27 13H33V19" stroke="#00D2FF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M16 32L22 35L27 30" stroke="#00D2FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>
+  <defs>
+    <linearGradient id="stockpilot-aero-grad" x1="12" y1="29" x2="33" y2="13" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0284C7"/>
+      <stop offset="0.5" stop-color="#00D2FF"/>
+      <stop offset="1" stop-color="#38BDF8"/>
+    </linearGradient>
+  </defs>
+</svg>
