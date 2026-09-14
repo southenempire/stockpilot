@@ -6,7 +6,7 @@
 
 [![Solana](https://img.shields.io/badge/Solana-Mainnet_%26_Devnet-9945FF?style=flat-square&logo=solana&logoColor=white)](https://solscan.io/account/CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK?cluster=devnet)
 [![Anchor](https://img.shields.io/badge/Anchor-v0.30-3B82F6?style=flat-square)](https://www.anchor-lang.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.3-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 [![Telegram](https://img.shields.io/badge/Telegram-Community-24A1DE?style=flat-square&logo=telegram&logoColor=white)](https://t.me/+ir8klWwop_5mZjg0)
 [![X](https://img.shields.io/badge/X-@StockPilotSOL-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/StockPilotSOL)
@@ -50,7 +50,7 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                          StockPilot Client Interface                         │
-│             (Next.js 15 App Router · Tailwind CSS · Framer Motion)          │
+│             (Next.js 16 App Router · Tailwind CSS · Framer Motion)          │
 └──────────────────────┬───────────────────────────────┬──────────────────────┘
                        │                               │
              [Email / Social Auth]            [Wallet Signatures]
@@ -68,10 +68,10 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
         │            StockPilot Anchor Smart Contract                 │
         │      Program ID: CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK       │
         ├─────────────────────────────────────────────────────────────┤
-        │ • PDA User Vault: seeds = [b"vault", authority.key()]       │
-        │ • 5-Minute Anti-Flash-Loan Timelock Cooldown                │
-        │ • Atomic 0.15% Protocol Fee Split to Treasury               │
-        │ • Multi-Token Support (SOL + Tokenized US Equities / USDC)   │
+        │ • PDA User Vault: seeds = [b"stockpilot_vault", authority]  │
+        │ • On-Chain State & Timelock Cooldown Coordinator            │
+        │ • Owner Authorization Constraints (authority == vault.owner)│
+        │ • Token Account Ownership & Mint Verification Constraints   │
         └──────────────┬───────────────────────────────┬──────────────┘
                        │                               │
                [Atomic Swaps]                  [RPC & State]
@@ -79,7 +79,7 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
                        ▼                               ▼
         ┌─────────────────────────────┐ ┌─────────────────────────────┐
         │     Jupiter DEX Routing     │ │     Helius RPC Network      │
-        │  (Best-Execution Liquidity) │ │ (High-Throughput Node APIs) │
+        │  (Client-Side Best Route)   │ │ (High-Throughput Node APIs) │
         └─────────────────────────────┘ └─────────────────────────────┘
 ```
 
@@ -94,9 +94,10 @@ The core protocol is implemented in Rust using the Anchor framework on Solana.
 * Protocol Treasury: `2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo`
 
 ### Invariants and Security Boundaries
-1. Isolated PDA Vaults: Vault addresses are deterministically generated via `Pubkey::find_program_address(&[b"vault", authority.key().as_ref()], program_id)`. Only the matching user authority (`has_one = authority`) can sign withdrawal instructions.
-2. Anti-MEV Timelock Cooldown: The program enforces `Clock::get()?.unix_timestamp >= vault.last_rebalance_time + COOLDOWN_SECONDS` (5-minute cooldown) preventing flash-loan exploit vectors and high-frequency churn.
-3. Atomic Protocol Fee Routing: A 0.15% fee is deducted atomically during deposits and directed immediately to the protocol treasury, with the remaining 99.85% stored in the user's isolated PDA vault.
+1. Isolated PDA Vaults: Vault addresses are deterministically derived via `Pubkey::find_program_address(&[b"stockpilot_vault", authority.key().as_ref()], program_id)`. Only the matching user authority can sign withdrawal and rebalance instructions (`constraint = authority.key() == vault.owner`).
+2. Token Account Validation: `Deposit` and `Withdraw` instructions strictly validate that token accounts match the vault PDA ownership (`vault_token_account.owner == vault.key()`) and expected token mints.
+3. On-Chain State & Timelock Coordinator: The contract acts as the on-chain state and cooldown coordinator, enforcing that `now >= vault.last_rebalance_ts + cooldown_seconds` (5-minute cooldown) before updating state counters, while multi-token swap execution is routed atomically via Jupiter on the client.
+4. Atomic Protocol Monetization: A 0.15% protocol fee is routed atomically in the deposit transaction bundle to the protocol treasury, with net funds secured in the user's isolated PDA vault.
 
 ---
 
@@ -106,14 +107,14 @@ Built with reference to the [Kaggle Whitepaper on Agent Security and Evaluation]
 
 * Zero Custody of Private Keys: The dApp never requests, handles, or stores user seed phrases or private keys. Signatures are executed inside isolated wallet enclaves.
 * Pseudonymous Identifier Hashing: Backend user activity is indexed via one-way salted HMAC-SHA256 hashes. Raw wallet addresses and personal identifiers are never stored in plaintext.
-* SQL Injection Immunity: All server-side database operations use parameterized SQLite prepared statements.
+* Transaction Signature Verification: Activity logging validates incoming Solana transaction signature formats to prevent unverified client submissions.
 * Secret Isolation: All API keys and sensitive parameters are strictly isolated in encrypted production environment variables; zero credentials exist within source control.
 
 ---
 
 ## Tech Stack
 
-* Frontend: Next.js 15 (App Router, React Server Components), TypeScript, Tailwind CSS
+* Frontend: Next.js 16 (App Router, React Server Components), TypeScript, Tailwind CSS
 * Smart Contracts: Rust, Anchor Framework 0.30, Solana Tool suite
 * Wallets & Onboarding: Privy Embedded Wallets (Email / Google), Solana Wallet Adapter (Phantom, Solflare)
 * DEX & Execution: Jupiter v6 Swap API (Atomic Equities Routing)

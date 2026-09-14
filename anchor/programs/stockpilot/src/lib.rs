@@ -91,7 +91,9 @@ pub mod stockpilot {
         Ok(())
     }
 
-    /// Execute atomic rebalance on-chain with timelock cooldown check
+    /// On-chain state and timelock cooldown coordinator for autonomous rebalancing.
+    /// Enforces owner authorization and timelock cooldown invariants on-chain,
+    /// while multi-token swap execution is routed atomically via Jupiter on the client.
     pub fn rebalance(
         ctx: Context<Rebalance>,
         _drift_bps: Vec<i16>,
@@ -153,10 +155,18 @@ pub struct Deposit<'info> {
 
     pub mint: InterfaceAccount<'info, Mint>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = owner_token_account.owner == owner.key() @ StockPilotError::InvalidTokenAccount,
+        constraint = owner_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+    )]
     pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = vault_token_account.owner == vault.key() @ StockPilotError::InvalidTokenAccount,
+        constraint = vault_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+    )]
     pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -177,10 +187,18 @@ pub struct Withdraw<'info> {
 
     pub mint: InterfaceAccount<'info, Mint>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = vault_token_account.owner == vault.key() @ StockPilotError::InvalidTokenAccount,
+        constraint = vault_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+    )]
     pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
 
-    #[account(mut)]
+    #[account(
+        mut,
+        constraint = owner_token_account.owner == owner.key() @ StockPilotError::InvalidTokenAccount,
+        constraint = owner_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+    )]
     pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
@@ -210,6 +228,7 @@ pub struct Rebalance<'info> {
         mut,
         seeds = [VAULT_SEED, vault.owner.as_ref()],
         bump = vault.bump,
+        constraint = authority.key() == vault.owner @ StockPilotError::Unauthorized,
     )]
     pub vault: Account<'info, StockVault>,
 }
@@ -237,4 +256,10 @@ pub enum StockPilotError {
     CalculationOverflow,
     #[msg("Insufficient funds in vault for withdrawal.")]
     InsufficientFunds,
+    #[msg("Invalid token account owner.")]
+    InvalidTokenAccount,
+    #[msg("Invalid token mint.")]
+    InvalidMint,
+    #[msg("Unauthorized: caller is not the vault owner.")]
+    Unauthorized,
 }

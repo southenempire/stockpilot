@@ -53,6 +53,18 @@ export async function POST(req: NextRequest) {
     const now = Date.now();
     const id = `act_${randomUUID().slice(0, 8)}`;
 
+    // Validate transaction signature format if provided
+    if (sig) {
+      const isBase58Sig = /^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(sig);
+      const isDemoSig = sig.startsWith('sim_') || sig.startsWith('demo_');
+      if (!isBase58Sig && !isDemoSig) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid Solana transaction signature format' },
+          { status: 400 }
+        );
+      }
+    }
+
     const db = getDatabase();
 
     // Ensure user exists first

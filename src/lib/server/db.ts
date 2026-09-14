@@ -2,12 +2,21 @@ import { DatabaseSync } from 'node:sqlite';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-const DB_DIR = path.join(process.cwd(), 'src', 'data');
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
+const DB_DIR = process.env.VERCEL
+  ? path.join('/tmp', 'stockpilot_data')
+  : path.join(process.cwd(), 'src', 'data');
+
+try {
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+} catch (e) {
+  console.warn('Could not create DB_DIR, will fallback to :memory: if needed', e);
 }
 
-const DB_PATH = path.join(DB_DIR, 'stockpilot.db');
+const DB_PATH = process.env.VERCEL
+  ? path.join('/tmp', 'stockpilot_data', 'stockpilot.db')
+  : path.join(DB_DIR, 'stockpilot.db');
 
 // Global singleton to reuse DB connection across Next.js API requests
 const globalForDb = globalThis as unknown as {
@@ -16,11 +25,16 @@ const globalForDb = globalThis as unknown as {
 
 export function getDatabase(): DatabaseSync {
   if (!globalForDb.stockpilotDb) {
-    const db = new DatabaseSync(DB_PATH);
-    
-    // Enable WAL mode and foreign key integrity
-    db.exec('PRAGMA journal_mode = WAL;');
-    db.exec('PRAGMA foreign_keys = ON;');
+    let db: DatabaseSync;
+    try {
+      db = new DatabaseSync(DB_PATH);
+      db.exec('PRAGMA journal_mode = WAL;');
+      db.exec('PRAGMA foreign_keys = ON;');
+    } catch (err) {
+      console.warn('Falling back to in-memory SQLite database on serverless:', err);
+      db = new DatabaseSync(':memory:');
+      db.exec('PRAGMA foreign_keys = ON;');
+    }
 
     // Auto-migrate tables
     db.exec(`
