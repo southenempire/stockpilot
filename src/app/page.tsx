@@ -50,7 +50,7 @@ import {
   faEnvelope,
   faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
-import { faXTwitter, faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons';
+import { faXTwitter, faGithub, faTelegram } from '@fortawesome/free-brands-svg-icons';
 import { usePrivy } from '@privy-io/react-auth';
 
 const WalletMultiButton = dynamic(
@@ -2486,22 +2486,22 @@ export default function StockPilotApp() {
                   <FontAwesomeIcon icon={faXTwitter} className="w-3.5 h-3.5" />
                 </a>
                 <a
-                  href="https://github.com"
+                  href="https://t.me/+ir8klWwop_5mZjg0"
                   target="_blank"
                   rel="noreferrer"
                   className={`transition ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-300'}`}
-                  aria-label="GitHub"
+                  aria-label="Telegram Community"
                 >
-                  <FontAwesomeIcon icon={faGithub} className="w-3.5 h-3.5" />
+                  <FontAwesomeIcon icon={faTelegram} className="w-3.5 h-3.5" />
                 </a>
                 <a
-                  href="https://discord.com"
+                  href="https://github.com/southenempire/stockpilot"
                   target="_blank"
                   rel="noreferrer"
                   className={`transition ${isLight ? 'hover:text-slate-800' : 'hover:text-slate-300'}`}
-                  aria-label="Discord"
+                  aria-label="GitHub Repository"
                 >
-                  <FontAwesomeIcon icon={faDiscord} className="w-3.5 h-3.5" />
+                  <FontAwesomeIcon icon={faGithub} className="w-3.5 h-3.5" />
                 </a>
               </div>
             </div>
