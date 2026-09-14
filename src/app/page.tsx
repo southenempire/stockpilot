@@ -708,6 +708,40 @@ export default function StockPilotApp() {
         {/* TAB 1: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <div className="space-y-4">
+            {/* Guided Judge Loop Breadcrumb Banner */}
+            <div
+              className={`rounded-xl border p-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono ${
+                isLight
+                  ? 'bg-sky-50/80 border-sky-200 text-sky-900 shadow-sm'
+                  : 'bg-[#00D2FF]/5 border-[#00D2FF]/20 text-slate-300'
+              }`}
+            >
+              <div className="flex items-center gap-1.5 font-bold">
+                <span className="inline-block w-2 h-2 rounded-full bg-[#00D2FF] animate-pulse" />
+                <span className="text-[#00D2FF]">90s Judge Flow:</span>
+              </div>
+              <div className="flex items-center flex-wrap gap-1 text-[10px]">
+                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-amber-300">
+                  1. Shock Market
+                </span>
+                <span className="text-slate-500">&rarr;</span>
+                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-cyan-300">
+                  2. Observe Drift
+                </span>
+                <span className="text-slate-500">&rarr;</span>
+                <span className="px-1.5 py-0.5 rounded bg-black/25 border border-white/5 text-emerald-300">
+                  3. Auto-Rebalance
+                </span>
+                <span className="text-slate-500">&rarr;</span>
+                <button
+                  onClick={() => setActiveTab('vault')}
+                  className="px-1.5 py-0.5 rounded bg-[#00D2FF]/20 border border-[#00D2FF]/30 text-[#00D2FF] font-bold hover:underline cursor-pointer"
+                >
+                  4. View Solscan Proof ↗
+                </button>
+              </div>
+            </div>
+
             {activeDemo ? (
               /* ================= DEMO SANDBOX ENVIRONMENT (STRICTLY OPT-IN) ================= */
               <>
@@ -761,15 +795,15 @@ export default function StockPilotApp() {
 
                   <div className="relative z-10">
                     <div className="text-[11px] font-bold uppercase tracking-wider font-mono flex items-center justify-between">
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Demo Portfolio Value</span>
+                    <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Portfolio Value (USDC)</span>
                     <span
                       className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
                         isLight
-                          ? 'bg-amber-50 text-amber-700 border-amber-200'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold'
                       }`}
                     >
-                      $10K Demo Sandbox
+                      [SIMULATED / SANDBOX]
                     </span>
                   </div>
 
@@ -1737,7 +1771,7 @@ export default function StockPilotApp() {
               <div className={`flex justify-between border-b pb-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
                 <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Vault PDA Formula:</span>
                 <span className={`font-semibold ${isLight ? 'text-sky-700' : 'text-[#00D2FF]'}`}>
-                  [b"stockpilot", user_pubkey]
+                  [b"stockpilot_vault", user_pubkey]
                 </span>
               </div>
               <div className={`flex justify-between border-b pb-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
@@ -1747,23 +1781,93 @@ export default function StockPilotApp() {
                 </span>
               </div>
               <div className={`flex justify-between border-b pb-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
-                <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Routing Engine:</span>
-                <span className={isLight ? 'text-slate-800' : 'text-slate-200'}>
-                  Jupiter Ultra Atomic
+                <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Protocol Fee:</span>
+                <span className={`font-semibold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                  0.15% (15 bps to Treasury)
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Network Cluster:</span>
                 <span className={`font-semibold ${isLight ? 'text-sky-700' : 'text-[#00D2FF]'}`}>
-                  Solana Mainnet-Beta
+                  Solana Devnet (Verified)
                 </span>
               </div>
             </div>
 
+            {/* Verified On-Chain Devnet Proof Feed */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="text-[11px] font-mono font-bold text-slate-300 uppercase flex items-center gap-1.5">
+                  <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3 text-[#00D2FF]" />
+                  <span>Verified On-Chain Activity (Solana Devnet)</span>
+                </div>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
+                  4 Confirmed TXs
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {[
+                  {
+                    action: 'Initialize Vault PDA',
+                    sig: '4Vff2RFdsqCKDgMatUvLHa9coVtMdRhDz6iC4iKbKKXZr4XSCGtiFQJNzPSbvFL48m5YrP21faGHi6krdi3Jaip',
+                    detail: 'Seeds: [b"stockpilot_vault", authority]',
+                    badge: 'Init',
+                  },
+                  {
+                    action: 'Deposit + 0.15% Fee Split',
+                    sig: '2vFVU6FPTMJsPuKQpJi8C5WoXzN6fXNNLcitoXCd8YaHfm8n2CqxCrveisMiSZVgXx8JojafoPCUYB17qejdgVQB',
+                    detail: 'CPI Split to Treasury (15 bps)',
+                    badge: 'Deposit',
+                  },
+                  {
+                    action: 'Autonomous Rebalance Execution',
+                    sig: '5ZrygkZ259W3QrbmYHrfkf8JPXZWJ6rrV4NnP1MJ95PSjhP1CU8y9Gm9h2WZAFb1dsBg31A8pdvRA5FPakvMACR9',
+                    detail: 'Drift rebalance + cooldown reset',
+                    badge: 'Rebalance',
+                  },
+                  {
+                    action: 'Vault Withdrawal to Owner',
+                    sig: '48TzJeinNWPZdb2B5ALG5fYTv6MfYq9cgLWxWnHd7xVrvjtoAWt4A2x3Ypd2tCxo4PsyHtLY4nvEhTqfifiasLuU',
+                    detail: '0.02 SOL withdrawn to signer',
+                    badge: 'Withdraw',
+                  },
+                ].map((item) => (
+                  <a
+                    key={item.sig}
+                    href={`https://solscan.io/tx/${item.sig}?cluster=devnet`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`block rounded-xl border p-2.5 text-xs font-mono transition group ${
+                      isLight
+                        ? 'bg-white border-slate-200 hover:border-sky-400 shadow-sm'
+                        : 'bg-[#0B111C] border-[#1E293B] hover:border-[#00D2FF]/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-200 group-hover:text-[#00D2FF] transition">
+                        <span>{item.action}</span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-white/5 border border-white/10 text-slate-400 font-normal">
+                          {item.badge}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-[#00D2FF] group-hover:underline">
+                        Solscan ↗
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-slate-500">
+                      <span>{item.detail}</span>
+                      <span className="font-mono text-slate-400">{item.sig.slice(0, 8)}...{item.sig.slice(-6)}</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+
             {/* Audit Log */}
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pt-2">
               <div className="text-[11px] font-mono text-slate-400 uppercase px-1">
-                Recent Transactions
+                Recent User Session Activity
               </div>
               {txHistory.map((tx) => (
                 <div

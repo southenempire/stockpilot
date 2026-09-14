@@ -387,6 +387,30 @@ export default function DepositModal({
               </div>
             </div>
 
+            {/* Protocol Fee Transparency (Anchor CPI Split) */}
+            <div
+              className={`p-2.5 rounded-xl border text-[10px] font-mono space-y-1 ${
+                isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-[#06080F] border-[#1E293B] text-slate-400'
+              }`}
+            >
+              <div className="flex justify-between">
+                <span>Management Fee:</span>
+                <span className="text-emerald-400 font-bold">0.00% (Zero)</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Protocol Fee (Anchor CPI):</span>
+                <span className="text-[#00D2FF] font-semibold">0.15% (15 bps to Treasury)</span>
+              </div>
+              <div className="flex justify-between border-t border-white/5 pt-1 text-slate-300">
+                <span>Net Vault Deposit:</span>
+                <span className="font-bold text-white">
+                  {depositAsset === 'USDC'
+                    ? `$${(amountUsdcEquivalent * 0.9985).toFixed(2)} USDC`
+                    : `${(parsedAmount * 0.9985).toFixed(4)} SOL`}
+                </span>
+              </div>
+            </div>
+
             {/* Action CTA */}
             <button
               onClick={handleExecuteDeposit}
