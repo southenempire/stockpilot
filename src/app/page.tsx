@@ -676,35 +676,25 @@ export default function StockPilotApp() {
             <span>{activeDemo ? '⚡ $10K Demo' : '● Live Mainnet'}</span>
           </button>
 
-          <button
-            onClick={() => {
-              if (connected) {
-                disconnect();
-              } else {
-                openWalletModal(true);
-              }
-            }}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition active:scale-95 cursor-pointer shrink-0 shadow-sm ${
-              connected && publicKey
-                ? isLight
-                  ? 'bg-sky-50 border border-sky-200 text-sky-800'
-                  : 'bg-sky-500/10 border border-sky-500/20 text-[#00D2FF]'
-                : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-md shadow-[#00D2FF]/20'
-            }`}
-            title={connected ? 'Connected (Click to Disconnect)' : 'Click to Select Wallet'}
-          >
-            <FontAwesomeIcon icon={faWallet} className="w-3 h-3 shrink-0" />
-            <span className="whitespace-nowrap font-bold">
-              {connected && publicKey
-                ? `${publicKey.toBase58().slice(0, 4)}...${publicKey.toBase58().slice(-3)}`
-                : 'Select Wallet'}
-            </span>
-          </button>
+          {connected && publicKey ? (
+            <button
+              onClick={() => disconnect()}
+              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition cursor-pointer shrink-0 border ${
+                isLight
+                  ? 'bg-sky-50 border-sky-200 text-sky-800 hover:bg-sky-100'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+              title="Connected (Click to Disconnect)"
+            >
+              <FontAwesomeIcon icon={faWallet} className="w-2.5 h-2.5 text-[#00D2FF]" />
+              <span>{publicKey.toBase58().slice(0, 4)}...{publicKey.toBase58().slice(-3)}</span>
+            </button>
+          ) : null}
         </div>
       </div>
 
-      {/* Main Scrollable Content (Constrained with min-h-0 so ONLY this area scrolls internally) */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full p-4 space-y-4 pb-8">
+      {/* Main Scrollable Content (Constrained with min-h-0 and overscroll-contain so ONLY this area scrolls internally) */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full p-4 space-y-4 pb-6 overscroll-contain">
         {/* TAB 1: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <div className="space-y-4">
@@ -1859,9 +1849,9 @@ export default function StockPilotApp() {
         )}
       </div>
 
-      {/* Mobile Bottom Tab Bar (Pinned at bottom, shrink-0, never covered or pushed off) */}
+      {/* Mobile Bottom Tab Bar (Pinned strictly at bottom, shrink-0, never scrolls off) */}
       <div
-        className={`shrink-0 border-t px-4 py-2.5 flex items-center justify-around z-30 backdrop-blur-xl transition-colors ${
+        className={`shrink-0 border-t px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] flex items-center justify-around z-30 backdrop-blur-xl transition-colors ${
           isLight ? 'bg-white/95 border-slate-200 shadow-lg' : 'bg-[#080D18]/95 border-[#1E293B]'
         }`}
       >
@@ -1899,7 +1889,7 @@ export default function StockPilotApp() {
   return (
     <div
       className={`min-h-screen relative transition-colors max-w-full overflow-x-hidden w-full ${
-        viewMode === 'app' ? 'h-screen overflow-hidden' : ''
+        viewMode === 'app' ? 'h-screen h-[100dvh] overflow-hidden' : ''
       } ${
         isLight
           ? 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
@@ -2579,9 +2569,9 @@ export default function StockPilotApp() {
         </div>
       )}
 
-      {/* VIEW MODE 2: DEDICATED ROBO-ADVISOR APP (Clean, Non-Overflowing Mobile-First Shell) */}
+      {/* VIEW MODE 2: DEDICATED ROBO-ADVISOR APP (Clean, Strictly Fixed/Pinned Mobile Viewport) */}
       {viewMode === 'app' && (
-        <div className="h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)] overflow-hidden flex justify-center items-center sm:py-3 px-0 sm:px-4 transition-colors relative z-10">
+        <div className="fixed inset-x-0 top-16 bottom-0 sm:relative sm:top-auto sm:bottom-auto sm:h-[calc(100dvh-4rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex justify-center items-center sm:py-3 px-0 sm:px-4 transition-colors z-10">
           <div
             className={`w-full max-w-lg h-full flex flex-col border-x sm:border sm:rounded-3xl shadow-2xl relative overflow-hidden transition-colors backdrop-blur-xl ${
               isLight
