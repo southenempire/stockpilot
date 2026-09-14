@@ -187,7 +187,7 @@ export default function StockPilotApp() {
   const [depositAmount, setDepositAmount] = useState('500');
   const [lastRebalanced, setLastRebalanced] = useState(Date.now() - 3600000);
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
-  const [isSandboxDrawerOpen, setIsSandboxDrawerOpen] = useState(false);
+  const [isSandboxDrawerOpen, setIsSandboxDrawerOpen] = useState(true);
 
   // Modals
   const [isPromptOpen, setIsPromptOpen] = useState(false);

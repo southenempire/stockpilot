@@ -67,8 +67,9 @@ export default function DepositModal({
   if (!isOpen) return null;
 
   const isLight = theme === 'light';
-  const availableBalance =
-    depositAsset === 'USDC' ? realUsdcBalance ?? 0 : realSolBalance ?? 0;
+  const availableBalance = isDemoMode
+    ? (depositAsset === 'USDC' ? 10000 : (solPriceUsd > 0 ? 10000 / solPriceUsd : 72))
+    : (depositAsset === 'USDC' ? realUsdcBalance ?? 0 : realSolBalance ?? 0);
 
   const parsedAmount = parseFloat(amountInput) || 0;
   const amountUsdcEquivalent =
