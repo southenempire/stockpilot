@@ -74,7 +74,20 @@ export default function WithdrawModal({
   };
 
   const handleExecuteWithdraw = async () => {
-    if (parsedAmount <= 0) return;
+    if (parsedAmount <= 0) {
+      setErrorMessage('Please enter a valid withdrawal amount.');
+      return;
+    }
+    if (maxAvailable <= 0) {
+      setErrorMessage('Vault portfolio balance is $0.00. Deposit funds into the vault first.');
+      return;
+    }
+    if (parsedAmount > maxAvailable) {
+      setErrorMessage(
+        `Withdrawal amount exceeds available vault balance (${withdrawAsset === 'USDC' ? '$' + maxAvailable.toFixed(2) : maxAvailable.toFixed(4) + ' SOL'}).`
+      );
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage(null);
 

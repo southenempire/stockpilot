@@ -30,6 +30,7 @@ interface BuyModalProps {
   solPriceUsd: number;
   theme?: 'dark' | 'light';
   isDemoMode?: boolean;
+  demoBalanceUsdc?: number;
   onBuySuccess: (params: {
     type: 'basket' | 'stock';
     item: BasketStrategy | Stock;
@@ -50,6 +51,7 @@ export default function BuyModal({
   solPriceUsd,
   theme = 'dark',
   isDemoMode = false,
+  demoBalanceUsdc = 10000,
   onBuySuccess,
 }: BuyModalProps) {
   const isLight = theme === 'light';
@@ -149,8 +151,8 @@ export default function BuyModal({
   const availableBalance =
     executionMode === 'sandbox'
       ? paymentAsset === 'USDC'
-        ? 10000
-        : 10
+        ? demoBalanceUsdc
+        : (solPriceUsd > 0 ? demoBalanceUsdc / solPriceUsd : 72)
       : paymentAsset === 'USDC'
       ? realUsdcBalance || 0
       : realSolBalance || 0;

@@ -33,6 +33,7 @@ interface DepositModalProps {
   realUsdcBalance: number | null;
   solPriceUsd: number;
   isDemoMode: boolean;
+  demoBalanceUsdc?: number;
   connected: boolean;
   publicKey: PublicKey | null;
   onDepositSuccess: (amountUsdc: number, asset: 'USDC' | 'SOL', txSig: string) => void;
@@ -49,6 +50,7 @@ export default function DepositModal({
   realUsdcBalance,
   solPriceUsd,
   isDemoMode,
+  demoBalanceUsdc = 10000,
   connected,
   publicKey: propPublicKey,
   onDepositSuccess,
@@ -58,7 +60,7 @@ export default function DepositModal({
   const activePublicKey = propPublicKey || walletPublicKey;
 
   const [depositAsset, setDepositAsset] = useState<'USDC' | 'SOL'>('USDC');
-  const [amountInput, setAmountInput] = useState('10');
+  const [amountInput, setAmountInput] = useState('100');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
@@ -68,7 +70,7 @@ export default function DepositModal({
 
   const isLight = theme === 'light';
   const availableBalance = isDemoMode
-    ? (depositAsset === 'USDC' ? 10000 : (solPriceUsd > 0 ? 10000 / solPriceUsd : 72))
+    ? (depositAsset === 'USDC' ? demoBalanceUsdc : (solPriceUsd > 0 ? demoBalanceUsdc / solPriceUsd : 72))
     : (depositAsset === 'USDC' ? realUsdcBalance ?? 0 : realSolBalance ?? 0);
 
   const parsedAmount = parseFloat(amountInput) || 0;
@@ -81,7 +83,16 @@ export default function DepositModal({
   };
 
   const handleExecuteDeposit = async () => {
-    if (parsedAmount <= 0) return;
+    if (parsedAmount <= 0) {
+      setErrorMessage('Please enter a valid deposit amount.');
+      return;
+    }
+    if (parsedAmount > availableBalance) {
+      setErrorMessage(
+        `Insufficient wallet balance. Available: ${depositAsset === 'USDC' ? '$' + availableBalance.toFixed(2) : availableBalance.toFixed(4) + ' SOL'}`
+      );
+      return;
+    }
     setIsSubmitting(true);
     setErrorMessage(null);
 

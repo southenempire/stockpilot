@@ -163,19 +163,16 @@ export default function StockPilotApp() {
     return initial;
   });
 
-  // Holdings state
+  // Holdings state (Starts at 0 in vault; demo wallet starts with $10,000 uninvested cash)
   const [holdings, setHoldings] = useState<PortfolioHolding[]>(() => {
-    const initialCapital = 10000;
     return PREBUILT_STRATEGIES[0].tokens.map((t) => {
       const stock = SUPPORTED_STOCKS[t.symbol];
-      const allocUsdc = initialCapital * t.targetWeight;
-      const shares = allocUsdc / stock.price;
       return {
         symbol: t.symbol,
         name: stock.name,
-        shares,
+        shares: 0,
         currentPrice: stock.price,
-        currentValue: allocUsdc,
+        currentValue: 0,
         targetWeight: t.targetWeight,
         currentWeight: t.targetWeight,
         driftPercent: 0,
@@ -461,13 +458,26 @@ export default function StockPilotApp() {
     asset: 'USDC' | 'SOL',
     txSig: string
   ) => {
-    setDemoBalanceUsdc((b) => b + amountUsdc);
-    const updated = computedHoldings.map((h) => {
-      const alloc = amountUsdc * h.targetWeight;
+    if (isDemoMode) {
+      setDemoBalanceUsdc((b) => Math.max(0, b - amountUsdc));
+    }
+    const updated = selectedStrategy.tokens.map((t) => {
+      const stock = SUPPORTED_STOCKS[t.symbol];
+      const price = livePrices[t.symbol] || stock.price;
+      const existing = holdings.find((h) => h.symbol === t.symbol);
+      const existingShares = existing ? existing.shares : 0;
+      const alloc = amountUsdc * t.targetWeight;
+      const newShares = existingShares + alloc / price;
       return {
-        ...h,
-        shares: h.shares + alloc / h.currentPrice,
-        currentValue: h.currentValue + alloc,
+        symbol: t.symbol,
+        name: stock.name,
+        shares: newShares,
+        currentPrice: price,
+        currentValue: newShares * price,
+        targetWeight: t.targetWeight,
+        currentWeight: t.targetWeight,
+        driftPercent: 0,
+        change24h: stock.change24h,
       };
     });
     setHoldings(updated);
@@ -475,11 +485,11 @@ export default function StockPilotApp() {
       {
         id: `tx_dep_${Date.now()}`,
         timestamp: Date.now(),
-        fromAsset: asset,
-        toAsset: selectedStrategy.name,
+        fromAsset: `${asset} (Wallet)`,
+        toAsset: `${selectedStrategy.name} (Vault)`,
         amountUsdc,
         txSignature: txSig,
-        reason: `Deposit ${asset} into ${selectedStrategy.name} on Solana Devnet`,
+        reason: `Deposited $${amountUsdc.toFixed(2)} from wallet into ${selectedStrategy.name} vault`,
       },
       ...p,
     ]);
@@ -498,6 +508,66 @@ export default function StockPilotApp() {
           amount: amountUsdc,
           txSignature: txSig,
           reason: `Deposit ${asset} into ${selectedStrategy.name} on Solana Devnet`,
+        }),
+      }).catch(console.warn);
+    }
+  };
+
+  // Handle Withdrawal Success (from on-chain or demo modal)
+  const handleWithdrawSuccess = (
+    amountUsdc: number,
+    asset: 'USDC' | 'SOL',
+    txSig: string
+  ) => {
+    if (isDemoMode) {
+      setDemoBalanceUsdc((b) => b + amountUsdc);
+    }
+
+    setHoldings((prev) => {
+      const currentVaultTotal = prev.reduce((sum, h) => sum + h.currentValue, 0);
+      if (currentVaultTotal <= 0 || amountUsdc >= currentVaultTotal) {
+        return prev.map((h) => ({
+          ...h,
+          shares: 0,
+          currentValue: 0,
+          currentWeight: 0,
+        }));
+      }
+      const remainRatio = Math.max(0, (currentVaultTotal - amountUsdc) / currentVaultTotal);
+      return prev.map((h) => ({
+        ...h,
+        shares: h.shares * remainRatio,
+        currentValue: h.currentValue * remainRatio,
+      }));
+    });
+
+    setTxHistory((prev) => [
+      {
+        id: `tx_wdr_${Date.now()}`,
+        timestamp: Date.now(),
+        fromAsset: `${selectedStrategy.name} (Vault)`,
+        toAsset: `${asset} (Wallet)`,
+        amountUsdc,
+        txSignature: txSig,
+        reason: `Withdrew $${amountUsdc.toFixed(2)} from vault back to wallet`,
+      },
+      ...prev,
+    ]);
+    setIsWithdrawOpen(false);
+    fetchRealBalances();
+
+    // Record withdrawal to backend database
+    if (publicKey) {
+      fetch('/api/user/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawIdentifier: publicKey.toBase58(),
+          activityType: 'withdraw',
+          asset,
+          amount: amountUsdc,
+          txSignature: txSig,
+          reason: `Withdrew $${amountUsdc.toFixed(2)} to wallet`,
         }),
       }).catch(console.warn);
     }
@@ -572,14 +642,16 @@ export default function StockPilotApp() {
       const updated = basket.tokens.map((t) => {
         const stock = SUPPORTED_STOCKS[t.symbol];
         const price = livePrices[t.symbol] || stock.price;
-        const allocUsdc = amountUsdc * t.targetWeight;
-        const shares = allocUsdc / price;
+        const existing = holdings.find((h) => h.symbol === t.symbol);
+        const existingShares = existing ? existing.shares : 0;
+        const alloc = amountUsdc * t.targetWeight;
+        const newShares = existingShares + alloc / price;
         return {
           symbol: t.symbol,
           name: stock.name,
-          shares,
+          shares: newShares,
           currentPrice: price,
-          currentValue: allocUsdc,
+          currentValue: newShares * price,
           targetWeight: t.targetWeight,
           currentWeight: t.targetWeight,
           driftPercent: 0,
@@ -603,7 +675,7 @@ export default function StockPilotApp() {
     }
 
     if (isDemoMode) {
-      setDemoBalanceUsdc((prev) => prev + amountUsdc);
+      setDemoBalanceUsdc((prev) => Math.max(0, prev - amountUsdc));
     }
   };
 
@@ -766,40 +838,61 @@ export default function StockPilotApp() {
                     </span>
                   </div>
 
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <div
-                      className={`font-mono text-3xl font-extrabold tracking-tight ${
-                        isLight ? 'text-slate-900' : 'text-white'
-                      }`}
-                    >
-                      $
-                      {totalValueUsdc.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                  <div className="mt-1 flex items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-2">
+                      <div
+                        className={`font-mono text-3xl font-extrabold tracking-tight ${
+                          isLight ? 'text-slate-900' : 'text-white'
+                        }`}
+                      >
+                        $
+                        {totalValueUsdc.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                      <span className="text-xs font-mono text-slate-500">Vault Net Worth</span>
                     </div>
-                    <span className="text-xs font-mono text-slate-500">USDC</span>
+
+                    <div className="text-right font-mono">
+                      <div className="text-[10px] text-slate-400">Wallet Cash:</div>
+                      <div className={`text-xs font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                        ${demoBalanceUsdc.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Monthly Gain Pill */}
-                  <div className="mt-2 flex items-center gap-2">
-                    <div
-                      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-bold ${
-                        pnlUsdc >= 0
-                          ? isLight
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-emerald-500/10 text-emerald-400'
-                          : 'bg-rose-500/10 text-rose-500'
-                      }`}
-                    >
-                      <FontAwesomeIcon
-                        icon={pnlUsdc >= 0 ? faArrowTrendUp : faArrowTrendDown}
-                        className="w-3 h-3"
-                      />
-                      <span>{pnlUsdc >= 0 ? `+$${pnlUsdc.toFixed(2)}` : `-$${Math.abs(pnlUsdc).toFixed(2)}`}</span>
-                      <span>({pnlPercent >= 0 ? `+${pnlPercent}%` : `${pnlPercent}%`})</span>
-                    </div>
-                    <span className="text-[11px] text-slate-400">simulated drift</span>
+                  {/* Monthly Gain Pill or Zero State */}
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    {totalValueUsdc > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-bold ${
+                            pnlUsdc >= 0
+                              ? isLight
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-emerald-500/10 text-emerald-400'
+                              : 'bg-rose-500/10 text-rose-500'
+                          }`}
+                        >
+                          <FontAwesomeIcon
+                            icon={pnlUsdc >= 0 ? faArrowTrendUp : faArrowTrendDown}
+                            className="w-3 h-3"
+                          />
+                          <span>{pnlUsdc >= 0 ? `+$${pnlUsdc.toFixed(2)}` : `-$${Math.abs(pnlUsdc).toFixed(2)}`}</span>
+                          <span>({pnlPercent >= 0 ? `+${pnlPercent}%` : `${pnlPercent}%`})</span>
+                        </div>
+                        <span className="text-[11px] text-slate-400">simulated drift</span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] font-mono text-amber-400 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                        <span>Vault empty. Deposit demo cash to allocate into strategy.</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Sparkline & Timeframe pills */}
@@ -2811,6 +2904,7 @@ export default function StockPilotApp() {
         solPriceUsd={solPriceUsd}
         theme={theme}
         isDemoMode={isDemoMode}
+        demoBalanceUsdc={demoBalanceUsdc}
         onBuySuccess={handleBuySuccess}
       />
 
@@ -2883,37 +2977,7 @@ export default function StockPilotApp() {
         isDemoMode={isDemoMode}
         connected={connected}
         publicKey={publicKey}
-        onWithdrawSuccess={(amountUsdc, asset, txSig) => {
-          setTxHistory((prev) => [
-            {
-              id: `tx_wdr_${Date.now()}`,
-              timestamp: Date.now(),
-              fromAsset: selectedStrategy.name,
-              toAsset: asset,
-              amountUsdc: amountUsdc,
-              txSignature: txSig,
-              reason: `Withdrew $${amountUsdc.toFixed(2)} to wallet`,
-            },
-            ...prev,
-          ]);
-
-          // Record withdrawal to backend database
-          if (publicKey) {
-            fetch('/api/user/activity', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                rawIdentifier: publicKey.toBase58(),
-                activityType: 'withdraw',
-                asset,
-                amount: amountUsdc,
-                txSignature: txSig,
-                reason: `Withdrew $${amountUsdc.toFixed(2)} to wallet`,
-              }),
-            }).catch(console.warn);
-          }
-          fetchRealBalances();
-        }}
+        onWithdrawSuccess={handleWithdrawSuccess}
       />
 
       {/* Real On-Chain Deposit Modal */}
@@ -2932,6 +2996,7 @@ export default function StockPilotApp() {
         realUsdcBalance={realUsdcBalance}
         solPriceUsd={solPriceUsd}
         isDemoMode={isDemoMode}
+        demoBalanceUsdc={demoBalanceUsdc}
         connected={connected}
         publicKey={publicKey}
         onDepositSuccess={handleDepositSuccess}
