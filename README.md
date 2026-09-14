@@ -69,6 +69,7 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
         │      Program ID: CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK       │
         ├─────────────────────────────────────────────────────────────┤
         │ • PDA User Vault: seeds = [b"stockpilot_vault", authority]  │
+        │ • On-Chain 0.15% Protocol Fee Deduction (15 bps to Treasury)│
         │ • On-Chain State & Timelock Cooldown Coordinator            │
         │ • Owner Authorization Constraints (authority == vault.owner)│
         │ • Token Account Ownership & Mint Verification Constraints   │
@@ -97,7 +98,7 @@ The core protocol is implemented in Rust using the Anchor framework on Solana.
 1. Isolated PDA Vaults: Vault addresses are deterministically derived via `Pubkey::find_program_address(&[b"stockpilot_vault", authority.key().as_ref()], program_id)`. Only the matching user authority can sign withdrawal and rebalance instructions (`constraint = authority.key() == vault.owner`).
 2. Token Account Validation: `Deposit` and `Withdraw` instructions strictly validate that token accounts match the vault PDA ownership (`vault_token_account.owner == vault.key()`) and expected token mints.
 3. On-Chain State & Timelock Coordinator: The contract acts as the on-chain state and cooldown coordinator, enforcing that `now >= vault.last_rebalance_ts + cooldown_seconds` (5-minute cooldown) before updating state counters, while multi-token swap execution is routed atomically via Jupiter on the client.
-4. Atomic Protocol Monetization: A 0.15% protocol fee is routed atomically in the deposit transaction bundle to the protocol treasury, with net funds secured in the user's isolated PDA vault.
+4. On-Chain Protocol Fee Deduction: The deposit instruction calculates a 0.15% protocol fee (15 basis points) and transfers it directly to the protocol treasury token account via CPI, with the remaining 99.85% net amount secured in the user's isolated PDA vault.
 
 ---
 

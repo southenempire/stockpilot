@@ -5,6 +5,7 @@ declare_id!("CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK");
 
 pub const VAULT_SEED: &[u8] = b"stockpilot_vault";
 pub const DEFAULT_COOLDOWN_SECONDS: i64 = 300; // 5 minute demo cooldown
+pub const PROTOCOL_FEE_BPS: u64 = 15; // 0.15% protocol fee (15 bps of 10,000)
 
 #[program]
 pub mod stockpilot {
@@ -32,18 +33,45 @@ pub mod stockpilot {
         Ok(())
     }
 
-    /// Deposit USDC into the user's autonomous portfolio vault
+    /// Deposit tokens into the user's autonomous portfolio vault with 0.15% protocol fee deduction
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
-        let cpi_accounts = TransferChecked {
+        let fee_amount = amount
+            .checked_mul(PROTOCOL_FEE_BPS)
+            .ok_or(StockPilotError::CalculationOverflow)?
+            .checked_div(10_000)
+            .unwrap_or(0);
+        let vault_amount = amount
+            .checked_sub(fee_amount)
+            .ok_or(StockPilotError::CalculationOverflow)?;
+
+        // 1. Transfer 0.15% protocol fee to the treasury token account
+        if fee_amount > 0 {
+            let fee_accounts = TransferChecked {
+                from: ctx.accounts.owner_token_account.to_account_info(),
+                mint: ctx.accounts.mint.to_account_info(),
+                to: ctx.accounts.treasury_token_account.to_account_info(),
+                authority: ctx.accounts.owner.to_account_info(),
+            };
+            let fee_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), fee_accounts);
+            token_interface::transfer_checked(fee_ctx, fee_amount, ctx.accounts.mint.decimals)?;
+        }
+
+        // 2. Transfer remaining 99.85% net amount to user's vault PDA
+        let vault_accounts = TransferChecked {
             from: ctx.accounts.owner_token_account.to_account_info(),
             mint: ctx.accounts.mint.to_account_info(),
             to: ctx.accounts.vault_token_account.to_account_info(),
             authority: ctx.accounts.owner.to_account_info(),
         };
-        let cpi_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), cpi_accounts);
-        token_interface::transfer_checked(cpi_ctx, amount, ctx.accounts.mint.decimals)?;
+        let vault_ctx = CpiContext::new(ctx.accounts.token_program.to_account_info(), vault_accounts);
+        token_interface::transfer_checked(vault_ctx, vault_amount, ctx.accounts.mint.decimals)?;
 
-        msg!("Deposited {} into StockPilot Vault", amount);
+        msg!(
+            "Deposited {} tokens (Vault: {}, Protocol Fee: {})",
+            amount,
+            vault_amount,
+            fee_amount
+        );
         Ok(())
     }
 
@@ -168,6 +196,12 @@ pub struct Deposit<'info> {
         constraint = vault_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
     )]
     pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = treasury_token_account.mint == mint.key() @ StockPilotError::InvalidMint,
+    )]
+    pub treasury_token_account: InterfaceAccount<'info, TokenAccount>,
 
     pub token_program: Interface<'info, TokenInterface>,
 }

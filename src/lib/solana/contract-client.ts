@@ -166,6 +166,7 @@ export function createDepositInstruction(
   mint: PublicKey,
   ownerTokenAccount: PublicKey,
   vaultTokenAccount: PublicKey,
+  treasuryTokenAccount: PublicKey,
   amount: bigint | number
 ): TransactionInstruction {
   const data = Buffer.concat([DISCRIMINATORS.deposit, encodeU64(amount)]);
@@ -178,6 +179,7 @@ export function createDepositInstruction(
       { pubkey: mint, isSigner: false, isWritable: false },
       { pubkey: ownerTokenAccount, isSigner: false, isWritable: true },
       { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: treasuryTokenAccount, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     data,
@@ -337,27 +339,17 @@ export async function buildDepositTransaction(
       )
     );
 
-    // 1. Send 0.15% fee to Treasury USDC ATA
-    if (feeUnits > BigInt(0)) {
-      tx.add(
-        createAssociatedTokenAccountIdempotentInstruction(
-          userPubkey,
-          treasuryAta,
-          PROTOCOL_TREASURY_WALLET,
-          DEVNET_USDC_MINT
-        )
-      );
-      tx.add(
-        createSplTokenTransferInstruction(
-          userAta,
-          treasuryAta,
-          userPubkey,
-          feeUnits
-        )
-      );
-    }
+    // Ensure treasury ATA exists
+    tx.add(
+      createAssociatedTokenAccountIdempotentInstruction(
+        userPubkey,
+        treasuryAta,
+        PROTOCOL_TREASURY_WALLET,
+        DEVNET_USDC_MINT
+      )
+    );
 
-    // 2. Deposit remaining 99.85% net into user's non-custodial Vault PDA
+    // Deposit with on-chain 0.15% protocol fee slice
     tx.add(
       createDepositInstruction(
         userPubkey,
@@ -365,7 +357,8 @@ export async function buildDepositTransaction(
         DEVNET_USDC_MINT,
         userAta,
         vaultAta,
-        vaultUnits
+        treasuryAta,
+        totalAmountU64
       )
     );
   }
