@@ -1,51 +1,51 @@
 <div align="center">
 
-# ⚡ StockPilot
+# StockPilot
 
 ### Autonomous 24/7 AI Stock Robo-Advisor on Solana
 
-[![Solana](https://img.shields.io/badge/Solana-Mainnet_%26_Devnet-9945FF?style=for-the-badge&logo=solana&logoColor=white)](https://solscan.io/account/CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK?cluster=devnet)
-[![Anchor](https://img.shields.io/badge/Anchor-v0.30-3B82F6?style=for-the-badge)](https://www.anchor-lang.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-15.3-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
-[![Telegram](https://img.shields.io/badge/Telegram-Community-24A1DE?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/+ir8klWwop_5mZjg0)
-[![X](https://img.shields.io/badge/X-@StockPilotSOL-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/StockPilotSOL)
+[![Solana](https://img.shields.io/badge/Solana-Mainnet_%26_Devnet-9945FF?style=flat-square&logo=solana&logoColor=white)](https://solscan.io/account/CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK?cluster=devnet)
+[![Anchor](https://img.shields.io/badge/Anchor-v0.30-3B82F6?style=flat-square)](https://www.anchor-lang.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.3-black?style=flat-square&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Telegram](https://img.shields.io/badge/Telegram-Community-24A1DE?style=flat-square&logo=telegram&logoColor=white)](https://t.me/+ir8klWwop_5mZjg0)
+[![X](https://img.shields.io/badge/X-@StockPilotSOL-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/StockPilotSOL)
 
-**[Live Web Terminal](https://stockpilotsol.xyz)** • **[Production Mirror](https://stockpilot-two-psi.vercel.app)** • **[Telegram Community](https://t.me/+ir8klWwop_5mZjg0)** • **[Twitter / X](https://x.com/StockPilotSOL)**
+[Terminal](https://stockpilotsol.xyz) / [Deployment Mirror](https://stockpilot-two-psi.vercel.app) / [Telegram](https://t.me/+ir8klWwop_5mZjg0) / [Twitter](https://x.com/StockPilotSOL)
 
 </div>
 
 ---
 
-## 📌 Executive Summary
+## Executive Summary
 
-**StockPilot** is an autonomous, non-custodial stock robo-advisor running natively on Solana. 
+StockPilot is an autonomous, non-custodial stock robo-advisor running natively on Solana. 
 
-Traditional wealth managers and retail brokerages are held hostage by legacy banking infrastructure: markets close at 4:00 PM, settlements take days, index rebalances suffer from manual execution drag, and investors face 0.25%–1.50% in recurring management fees while sacrificing custody of their assets.
+Traditional wealth managers and retail brokerages are restricted by legacy banking infrastructure: markets close at 4:00 PM, settlements take multiple days, index rebalances suffer from manual execution drag, and investors incur 0.25% to 1.50% in recurring management fees while surrendering asset custody to centralized custodians.
 
-StockPilot leverages tokenized US equities (**xNVDA**, **xTSM**, **xAMD**, **xMSFT**) and high-frequency Solana primitives to deliver:
-* **24/7/365 Continuous Liquidity:** Trade and rebalance tokenized equity baskets with zero market pauses.
-* **Sub-Second Atomic Rebalancing:** Automated drift detection triggers rebalances executed in <400ms slots via Jupiter DEX for ~$0.0008 in gas.
-* **100% Non-Custodial Anchor Vaults:** User assets reside in isolated Program-Derived Address (PDA) vaults where only the user's cryptographic key can authorize withdrawals.
-* **Consumer-Grade Web2 + Web3 Onboarding:** Instant embedded wallet creation via Privy (Google & Email) alongside native Phantom and Solflare support.
-* **Risk-Free $10,000 Sandbox:** Interactive preloaded test environment to simulate market shocks and observe automated rebalancing before depositing real capital.
+StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-frequency Solana primitives to deliver:
+* Continuous 24/7/365 Liquidity: Trade and rebalance tokenized equity baskets with zero market pauses or holiday closures.
+* Sub-Second Atomic Rebalancing: Automated drift detection triggers rebalances executed in <400ms slots via Jupiter DEX for ~$0.0008 in gas.
+* 100% Non-Custodial Anchor Vaults: User assets reside in isolated Program-Derived Address (PDA) vaults where only the user's cryptographic key can authorize withdrawals.
+* Consumer-Grade Web2 and Web3 Onboarding: Instant embedded wallet creation via Privy (Google and Email) alongside native Phantom and Solflare support.
+* Simulated Sandbox: Interactive preloaded test environment to model portfolio volatility and observe automated rebalancing prior to deploying capital.
 
 ---
 
-## 📊 Benchmark: Legacy Brokerages vs. StockPilot
+## Benchmark: Legacy Brokerages vs. StockPilot
 
-| Feature | TradFi Brokerages (Robinhood / Schwab) | Legacy Robo-Advisors (Wealthfront / Betterment) | **StockPilot On-Chain** |
+| Feature | TradFi Brokerages (Robinhood / Schwab) | Legacy Robo-Advisors (Wealthfront / Betterment) | StockPilot On-Chain |
 | :--- | :--- | :--- | :--- |
-| **Trading Hours** | 9:30 AM – 4:00 PM EST (Closed Weekends) | Batch end-of-day execution | **24/7/365 Continuous Real-Time** |
-| **Asset Custody** | Centralized broker street name | Third-party clearing custodian | **100% Non-Custodial Anchor PDA Vault** |
-| **Settlement Time** | T+1 / T+2 days | T+2 days | **< 400ms Sub-Second Atomic Slots** |
-| **Annual Management Drag** | Hidden spread + margin fees | 0.25% – 1.50% AUM annual fee | **0.00% Annual AUM Drag** |
-| **Network Fee per Trade** | $0 commissions (PFOF slippage) | Integrated into custodian drag | **<$0.001 (Solana Network Gas)** |
-| **Withdrawal Flexibility** | 3–5 business day wire/ACH delays | Multi-day liquidation windows | **Instant On-Chain Withdraw to Wallet** |
+| Trading Hours | 9:30 AM – 4:00 PM EST (Closed Weekends) | Batch end-of-day execution | 24/7/365 Continuous Real-Time |
+| Asset Custody | Centralized broker street name | Third-party clearing custodian | 100% Non-Custodial Anchor PDA Vault |
+| Settlement Time | T+1 / T+2 days | T+2 days | < 400ms Sub-Second Atomic Slots |
+| Annual Management Drag | Hidden spread + margin fees | 0.25% – 1.50% AUM annual fee | 0.00% Annual AUM Drag |
+| Network Fee per Trade | $0 commissions (PFOF slippage) | Integrated into custodian drag | <$0.001 (Solana Network Gas) |
+| Withdrawal Flexibility | 3–5 business day wire/ACH delays | Multi-day liquidation windows | Instant On-Chain Withdraw to Wallet |
 
 ---
 
-## 🏛️ System Architecture
+## System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -85,44 +85,44 @@ StockPilot leverages tokenized US equities (**xNVDA**, **xTSM**, **xAMD**, **xMS
 
 ---
 
-## ⚡ Smart Contract Primitives
+## Smart Contract Primitives
 
-The core protocol is implemented in Rust using the **Anchor** framework on Solana.
+The core protocol is implemented in Rust using the Anchor framework on Solana.
 
-* **Program ID:** [`CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK`](https://solscan.io/account/CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK?cluster=devnet)
-* **Contract Authority:** `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb`
-* **Protocol Treasury:** `2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo`
+* Program ID: [`CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK`](https://solscan.io/account/CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK?cluster=devnet)
+* Contract Authority: `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb`
+* Protocol Treasury: `2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo`
 
-### Key Invariants & Security Boundaries:
-1. **Isolated PDA Vaults:** Vault addresses are deterministically generated via `Pubkey::find_program_address(&[b"vault", authority.key().as_ref()], program_id)`. Only the matching user authority (`has_one = authority`) can sign withdrawal instructions.
-2. **Anti-MEV Timelock Cooldown:** The program enforces `Clock::get()?.unix_timestamp >= vault.last_rebalance_time + COOLDOWN_SECONDS` (5-minute cooldown) preventing flash-loan exploit vectors and high-frequency churn.
-3. **Atomic Protocol Monetization:** A 0.15% fee is deducted atomically during deposits and directed immediately to the protocol treasury, with the remaining 99.85% stored in the user's isolated PDA vault.
-
----
-
-## 🔒 Security & Privacy Architecture
-
-Built with reference to the **[Kaggle Whitepaper – Vibe Coding Agent Security and Evaluation](https://www.kaggle.com/whitepaper-vibe-coding-agent-security-and-evaluation)** guidelines for safe autonomous agents:
-
-* **Zero Custody of Private Keys:** The dApp never requests, handles, or stores user seed phrases or private keys. Signatures are executed inside isolated wallet enclaves.
-* **Pseudonymous Identifier Hashing:** Backend user activity is indexed via one-way salted **HMAC-SHA256** hashes. Raw wallet addresses and personal identifiers are never stored in plaintext.
-* **SQL Injection Immunity:** All server-side database operations use parameterized SQLite prepared statements.
-* **Zero Secret Leakage:** All API keys and sensitive parameters are strictly isolated in encrypted production environment variables; zero credentials exist within source control.
+### Invariants and Security Boundaries
+1. Isolated PDA Vaults: Vault addresses are deterministically generated via `Pubkey::find_program_address(&[b"vault", authority.key().as_ref()], program_id)`. Only the matching user authority (`has_one = authority`) can sign withdrawal instructions.
+2. Anti-MEV Timelock Cooldown: The program enforces `Clock::get()?.unix_timestamp >= vault.last_rebalance_time + COOLDOWN_SECONDS` (5-minute cooldown) preventing flash-loan exploit vectors and high-frequency churn.
+3. Atomic Protocol Fee Routing: A 0.15% fee is deducted atomically during deposits and directed immediately to the protocol treasury, with the remaining 99.85% stored in the user's isolated PDA vault.
 
 ---
 
-## 🛠️ Tech Stack
+## Security and Privacy Design
 
-* **Frontend:** Next.js 15 (App Router, Server Components), TypeScript, Tailwind CSS, FontAwesome Pro
-* **Smart Contracts:** Rust, Anchor Framework 0.30, Solana Tool suite
-* **Wallets & Onboarding:** Privy Embedded Wallets (Email / Google), Solana Wallet Adapter (Phantom, Solflare)
-* **DEX & Execution:** Jupiter v6 Swap API (Atomic Best-Route Equities Routing)
-* **Infrastructure & Nodes:** Helius High-Speed Solana RPCs, Vercel Edge Network
-* **Storage & Indexing:** Node.js Native SQLite (`node:sqlite`) with HMAC-SHA256 privacy layer
+Built with reference to the [Kaggle Whitepaper on Agent Security and Evaluation](https://www.kaggle.com/whitepaper-vibe-coding-agent-security-and-evaluation):
+
+* Zero Custody of Private Keys: The dApp never requests, handles, or stores user seed phrases or private keys. Signatures are executed inside isolated wallet enclaves.
+* Pseudonymous Identifier Hashing: Backend user activity is indexed via one-way salted HMAC-SHA256 hashes. Raw wallet addresses and personal identifiers are never stored in plaintext.
+* SQL Injection Immunity: All server-side database operations use parameterized SQLite prepared statements.
+* Secret Isolation: All API keys and sensitive parameters are strictly isolated in encrypted production environment variables; zero credentials exist within source control.
 
 ---
 
-## 🚀 Quickstart & Local Development
+## Tech Stack
+
+* Frontend: Next.js 15 (App Router, React Server Components), TypeScript, Tailwind CSS
+* Smart Contracts: Rust, Anchor Framework 0.30, Solana Tool suite
+* Wallets & Onboarding: Privy Embedded Wallets (Email / Google), Solana Wallet Adapter (Phantom, Solflare)
+* DEX & Execution: Jupiter v6 Swap API (Atomic Equities Routing)
+* Infrastructure: Helius High-Throughput Solana RPCs, Vercel Edge Network
+* Database Layer: Node.js Native SQLite (`node:sqlite`) with HMAC-SHA256 privacy layer
+
+---
+
+## Quickstart & Local Development
 
 ### Prerequisites
 * Node.js >= 18.x
@@ -151,20 +151,20 @@ NEXT_PUBLIC_STOCKPILOT_PROGRAM_ID=CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK
 ```bash
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open `http://localhost:3000` in your browser.
 
 ---
 
-## 🌐 Official Channels & Community
+## Official Links
 
-* **Web Application:** [https://stockpilotsol.xyz](https://stockpilotsol.xyz)
-* **Deployment Mirror:** [https://stockpilot-two-psi.vercel.app](https://stockpilot-two-psi.vercel.app)
-* **Telegram Community:** [https://t.me/+ir8klWwop_5mZjg0](https://t.me/+ir8klWwop_5mZjg0)
-* **Twitter / X:** [@StockPilotSOL](https://x.com/StockPilotSOL)
-* **Source Repository:** [github.com/southenempire/stockpilot](https://github.com/southenempire/stockpilot)
+* Web Application: [https://stockpilotsol.xyz](https://stockpilotsol.xyz)
+* Deployment Mirror: [https://stockpilot-two-psi.vercel.app](https://stockpilot-two-psi.vercel.app)
+* Telegram Community: [https://t.me/+ir8klWwop_5mZjg0](https://t.me/+ir8klWwop_5mZjg0)
+* Twitter / X: [@StockPilotSOL](https://x.com/StockPilotSOL)
+* Source Code: [github.com/southenempire/stockpilot](https://github.com/southenempire/stockpilot)
 
 ---
 
-## 📄 License
+## License
 
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
