@@ -99,9 +99,9 @@ The core protocol is implemented in Rust using the Anchor framework on Solana.
 | Lifecycle Action | Network | Transaction Signature / Solscan Link | Status |
 | :--- | :--- | :--- | :--- |
 | **Initialize Vault PDA** | Solana Devnet | [`4Vff2RFdsqCKDgMatUvLHa9coVtMdRhDz6iC4iKbKKXZr4XSCGtiFQJNzPSbvFL48m5YrP21faGHi6krdi3Jaip`](https://solscan.io/tx/4Vff2RFdsqCKDgMatUvLHa9coVtMdRhDz6iC4iKbKKXZr4XSCGtiFQJNzPSbvFL48m5YrP21faGHi6krdi3Jaip?cluster=devnet) | Confirmed |
-| **Deposit + 0.15% Fee Split** | Solana Devnet | [`52pz4cfvEHoowJJ9vu1jsH27bkR2ZZpa5KuK5FBibAy5yLvj8qZBnmUkZXPjVvAXMa5wQDdyZY27yAwhBFWB4vyq`](https://solscan.io/tx/52pz4cfvEHoowJJ9vu1jsH27bkR2ZZpa5KuK5FBibAy5yLvj8qZBnmUkZXPjVvAXMa5wQDdyZY27yAwhBFWB4vyq?cluster=devnet) | Confirmed |
-| **Timelock Cooldown Verification** | Solana Devnet | `RebalanceCooldownActive (Error 0x1770 - Enforced On-Chain)` | Verified |
-| **Vault Withdrawal to Owner** | Solana Devnet | [`3xTgasBWSciZw1zBMuYX23xnW978fNHDFGdHhE8d9K45qynBp6CHKMezPY92XWzH144MY4fewSoDb6fzkELHwnMR`](https://solscan.io/tx/3xTgasBWSciZw1zBMuYX23xnW978fNHDFGdHhE8d9K45qynBp6CHKMezPY92XWzH144MY4fewSoDb6fzkELHwnMR?cluster=devnet) | Confirmed |
+| **Deposit + 0.15% Fee Split** | Solana Devnet | [`2vFVU6FPTMJsPuKQpJi8C5WoXzN6fXNNLcitoXCd8YaHfm8n2CqxCrveisMiSZVgXx8JojafoPCUYB17qejdgVQB`](https://solscan.io/tx/2vFVU6FPTMJsPuKQpJi8C5WoXzN6fXNNLcitoXCd8YaHfm8n2CqxCrveisMiSZVgXx8JojafoPCUYB17qejdgVQB?cluster=devnet) | Confirmed |
+| **Autonomous Rebalance Execution** | Solana Devnet | [`5ZrygkZ259W3QrbmYHrfkf8JPXZWJ6rrV4NnP1MJ95PSjhP1CU8y9Gm9h2WZAFb1dsBg31A8pdvRA5FPakvMACR9`](https://solscan.io/tx/5ZrygkZ259W3QrbmYHrfkf8JPXZWJ6rrV4NnP1MJ95PSjhP1CU8y9Gm9h2WZAFb1dsBg31A8pdvRA5FPakvMACR9?cluster=devnet) | Confirmed |
+| **Vault Withdrawal to Owner** | Solana Devnet | [`48TzJeinNWPZdb2B5ALG5fYTv6MfYq9cgLWxWnHd7xVrvjtoAWt4A2x3Ypd2tCxo4PsyHtLY4nvEhTqfifiasLuU`](https://solscan.io/tx/48TzJeinNWPZdb2B5ALG5fYTv6MfYq9cgLWxWnHd7xVrvjtoAWt4A2x3Ypd2tCxo4PsyHtLY4nvEhTqfifiasLuU?cluster=devnet) | Confirmed |
 
 ### Invariants and Security Boundaries
 1. Isolated PDA Vaults: Vault addresses are deterministically derived via `Pubkey::find_program_address(&[b"stockpilot_vault", authority.key().as_ref()], program_id)`. Only the matching user authority can sign withdrawal and rebalance instructions (`constraint = authority.key() == vault.owner`).
