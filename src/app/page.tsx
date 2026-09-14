@@ -641,8 +641,8 @@ export default function StockPilotApp() {
     const activeDemo = forceDemoMode !== undefined ? forceDemoMode : isDemoMode;
     return (
     <div
-      className={`w-full h-full flex flex-col transition-colors relative overflow-hidden ${
-        isInsideMockup ? 'max-h-[580px]' : ''
+      className={`w-full flex flex-col transition-colors relative overflow-hidden ${
+        isInsideMockup ? 'h-[580px] max-h-[580px]' : 'h-full flex-1'
       } ${
         isLight
           ? 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
@@ -2238,7 +2238,7 @@ export default function StockPilotApp() {
                     </div>
 
                     {/* Embedded Live Mobile App inside Phone Mockup (isInsideMockup=true, forceDemoMode=true to showcase full demo portfolio) */}
-                    <div className="pt-5 overflow-hidden">
+                    <div className="pt-5 overflow-hidden h-[600px] flex flex-col">
                       {renderMobileAppContent(true, true)}
                     </div>
                   </div>

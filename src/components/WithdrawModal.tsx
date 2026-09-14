@@ -307,16 +307,16 @@ export default function WithdrawModal({
               }`}
             >
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Available to Cash Out:</span>
-                <span className="text-white font-bold">
+                <span>Vault Balance to Cash Out:</span>
+                <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
                   {withdrawAsset === 'USDC'
                     ? `$${availableUsdc.toFixed(2)}`
                     : `${availableSol.toFixed(4)} SOL`}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 text-[10px]">
-                <span>Network:</span>
-                <span className="text-emerald-400">Solana Devnet</span>
+                <span>Destination:</span>
+                <span className="text-emerald-400 font-bold">Your Wallet Balance</span>
               </div>
             </div>
 

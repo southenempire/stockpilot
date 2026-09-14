@@ -316,10 +316,10 @@ export default function DepositModal({
             >
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>Wallet Balance Available:</span>
-                <span className="text-white font-bold">
+                <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
                   {depositAsset === 'USDC'
-                    ? `$${(realUsdcBalance ?? 0).toFixed(2)}`
-                    : `${(realSolBalance ?? 0).toFixed(4)} SOL`}
+                    ? `$${availableBalance.toFixed(2)}`
+                    : `${availableBalance.toFixed(4)} SOL`}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 text-[10px]">

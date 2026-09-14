@@ -145,14 +145,14 @@ export default function HoldingRow({
       }`}
     >
       {/* Left: Stock Logo & Identity */}
-      <div className="flex items-center gap-3 min-w-[190px]">
+      <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[170px] min-w-0">
         <div
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-bold text-white text-xs shadow-sm border border-white/10 group-hover:scale-105 transition-transform"
           style={{ backgroundColor: stock?.iconBg || '#1E293B' }}
         >
           {holding.symbol.replace('x', '')}
         </div>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span
               className={`font-mono font-bold text-sm tracking-tight ${
@@ -182,7 +182,7 @@ export default function HoldingRow({
       </div>
 
       {/* Middle-Left: Live Price & 24h Performance */}
-      <div className="flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center min-w-[110px]">
+      <div className="flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center w-full sm:w-auto sm:min-w-[100px] min-w-0">
         <div
           className={`font-mono font-bold text-sm ${
             isLight ? 'text-slate-900' : 'text-slate-100'
@@ -259,7 +259,7 @@ export default function HoldingRow({
       </div>
 
       {/* Right: Position Value, Shares & Drift Status */}
-      <div className="flex items-center justify-between sm:justify-end gap-4 min-w-[130px]">
+      <div className="flex items-center justify-between sm:justify-end gap-4 w-full sm:w-auto sm:min-w-[120px] min-w-0">
         <div className="text-right">
           <div
             className={`font-mono font-bold text-sm ${
