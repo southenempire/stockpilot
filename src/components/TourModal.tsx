@@ -86,6 +86,13 @@ export default function TourModal({
 }: TourModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Reset to first slide whenever modal opens
+  React.useEffect(() => {
+    if (isOpen) {
+      setCurrentStep(0);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const isLight = theme === 'light';

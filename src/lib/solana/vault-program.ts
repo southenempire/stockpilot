@@ -31,13 +31,17 @@ export function calculateProtocolFee(amount: number): {
 // Cooldown interval between automated rebalances to protect user from excessive slippage
 export const DEFAULT_REBALANCE_COOLDOWN_SECONDS = 3600; // 1 hour
 
+export const STOCKPILOT_PROGRAM_ID = new PublicKey(
+  process.env.NEXT_PUBLIC_STOCKPILOT_PROGRAM_ID || 'CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK'
+);
+
 /**
  * Derives the PDA address for a user's stock portfolio vault
  * Uses pattern from Solana Fall School vault challenge
  */
 export function derivePortfolioVaultPda(
   userPublicKey: PublicKey,
-  programId: PublicKey = new PublicKey('StkPiLot11111111111111111111111111111111111')
+  programId: PublicKey = STOCKPILOT_PROGRAM_ID
 ): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
     [Buffer.from(VAULT_SEED_PREFIX), userPublicKey.toBuffer()],

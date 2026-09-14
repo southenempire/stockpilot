@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{self, Mint, TokenAccount, TokenInterface, TransferChecked};
 
-declare_id!("StkPiLot11111111111111111111111111111111111");
+declare_id!("CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK");
 
 pub const VAULT_SEED: &[u8] = b"stockpilot_vault";
 pub const DEFAULT_COOLDOWN_SECONDS: i64 = 300; // 5 minute demo cooldown
@@ -44,6 +44,50 @@ pub mod stockpilot {
         token_interface::transfer_checked(cpi_ctx, amount, ctx.accounts.mint.decimals)?;
 
         msg!("Deposited {} into StockPilot Vault", amount);
+        Ok(())
+    }
+
+    /// Withdraw SPL tokens from the vault back to the owner
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        let owner_key = ctx.accounts.owner.key();
+        let seeds = &[
+            VAULT_SEED,
+            owner_key.as_ref(),
+            &[ctx.accounts.vault.bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        let cpi_accounts = TransferChecked {
+            from: ctx.accounts.vault_token_account.to_account_info(),
+            mint: ctx.accounts.mint.to_account_info(),
+            to: ctx.accounts.owner_token_account.to_account_info(),
+            authority: ctx.accounts.vault.to_account_info(),
+        };
+        let cpi_ctx = CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            cpi_accounts,
+            signer,
+        );
+        token_interface::transfer_checked(cpi_ctx, amount, ctx.accounts.mint.decimals)?;
+
+        msg!("Withdrew {} tokens from StockPilot Vault to owner", amount);
+        Ok(())
+    }
+
+    /// Withdraw native SOL from the vault PDA back to the owner
+    pub fn withdraw_sol(ctx: Context<WithdrawSol>, amount: u64) -> Result<()> {
+        let vault_info = ctx.accounts.vault.to_account_info();
+        let owner_info = ctx.accounts.owner.to_account_info();
+
+        require!(
+            vault_info.lamports() >= amount,
+            StockPilotError::InsufficientFunds
+        );
+
+        **vault_info.try_borrow_mut_lamports()? -= amount;
+        **owner_info.try_borrow_mut_lamports()? += amount;
+
+        msg!("Withdrew {} lamports SOL from StockPilot Vault to owner", amount);
         Ok(())
     }
 
@@ -119,6 +163,46 @@ pub struct Deposit<'info> {
 }
 
 #[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [VAULT_SEED, owner.key().as_ref()],
+        bump = vault.bump,
+        has_one = owner,
+    )]
+    pub vault: Account<'info, StockVault>,
+
+    pub mint: InterfaceAccount<'info, Mint>,
+
+    #[account(mut)]
+    pub vault_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    #[account(mut)]
+    pub owner_token_account: InterfaceAccount<'info, TokenAccount>,
+
+    pub token_program: Interface<'info, TokenInterface>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawSol<'info> {
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [VAULT_SEED, owner.key().as_ref()],
+        bump = vault.bump,
+        has_one = owner,
+    )]
+    pub vault: Account<'info, StockVault>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct Rebalance<'info> {
     pub authority: Signer<'info>,
 
@@ -151,4 +235,6 @@ pub enum StockPilotError {
     RebalanceCooldownActive,
     #[msg("Math calculation overflow.")]
     CalculationOverflow,
+    #[msg("Insufficient funds in vault for withdrawal.")]
+    InsufficientFunds,
 }

@@ -5,10 +5,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-stockpilot = "StkPiLot11111111111111111111111111111111111"
+stockpilot = "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK"
 
 [programs.devnet]
-stockpilot = "StkPiLot11111111111111111111111111111111111"
+stockpilot = "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK"
 
 [registry]
 url = "https://api.apr.dev"

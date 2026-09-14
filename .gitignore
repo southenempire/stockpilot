@@ -34,9 +34,19 @@ yarn-error.log*
 .env*
 *treasury_credentials.json
 
-# vercel
-.vercel
-
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Solana & Anchor build artifacts / keypairs
+target/
+*-keypair.json
+id.json
+
+# SQLite local databases
+*.db
+*.db-wal
+*.db-shm
+
+# Scratch
+scratch/

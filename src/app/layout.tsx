@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import '@solana/wallet-adapter-react-ui/styles.css';
 import SolanaWalletProvider from '@/components/SolanaWalletProvider';
+import PrivyWalletProvider from '@/components/PrivyWalletProvider';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://stockpilot.trade'),
@@ -29,9 +30,11 @@ export default function RootLayout({
       className="h-full antialiased font-sans"
     >
       <body className="min-h-full flex flex-col antialiased">
-        <SolanaWalletProvider>
-          {children}
-        </SolanaWalletProvider>
+        <PrivyWalletProvider>
+          <SolanaWalletProvider>
+            {children}
+          </SolanaWalletProvider>
+        </PrivyWalletProvider>
       </body>
     </html>
   );

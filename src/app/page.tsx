@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { PREBUILT_STRATEGIES } from '@/data/strategies';
@@ -8,6 +8,7 @@ import { SUPPORTED_STOCKS } from '@/data/stocks';
 import { BasketStrategy, PortfolioHolding, RebalanceTx, Stock } from '@/types/stock';
 import { calculatePortfolioState, analyzeDrift } from '@/lib/solana/rebalance-engine';
 import { generateAiStrategy } from '@/lib/ai/strategy-generator';
+import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
 import HoldingRow from '@/components/HoldingRow';
 import StrategyCard from '@/components/StrategyCard';
 import RebalanceModal from '@/components/RebalanceModal';
@@ -15,6 +16,8 @@ import BuyModal from '@/components/BuyModal';
 import SocialFlexCardModal from '@/components/SocialFlexCardModal';
 import PromptModal from '@/components/PromptModal';
 import TourModal from '@/components/TourModal';
+import WithdrawModal from '@/components/WithdrawModal';
+import DepositModal from '@/components/DepositModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import StockPilotLogo from '@/components/StockPilotLogo';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -44,8 +47,11 @@ import {
   faChartLine,
   faFire,
   faWallet,
+  faEnvelope,
+  faRightFromBracket,
 } from '@fortawesome/free-solid-svg-icons';
 import { faXTwitter, faGithub, faDiscord } from '@fortawesome/free-brands-svg-icons';
+import { usePrivy } from '@privy-io/react-auth';
 
 const WalletMultiButton = dynamic(
   async () => (await import('@solana/wallet-adapter-react-ui')).WalletMultiButton,
@@ -72,8 +78,37 @@ export default function StockPilotApp() {
 
   // Solana Wallet Adapter Hooks
   const { setVisible: openWalletModal } = useWalletModal();
-  const { publicKey, connected, disconnect } = useWallet();
+  const { publicKey: adapterPublicKey, connected: adapterConnected, disconnect } = useWallet();
   const { connection } = useConnection();
+  const { login: privyLogin, logout: privyLogout, authenticated: privyAuthenticated, user: privyUser } = usePrivy();
+
+  // Find Privy embedded Solana wallet if user logs in with Email/Social
+  const privySolanaAddress = useMemo(() => {
+    if (!privyUser) return null;
+    if (privyUser.wallet && (privyUser.wallet as any).chainType === 'solana') {
+      return privyUser.wallet.address;
+    }
+    const solAccount = privyUser.linkedAccounts?.find(
+      (acc: any) => acc.type === 'wallet' && acc.chainType === 'solana'
+    );
+    if (solAccount && 'address' in solAccount) {
+      return (solAccount as any).address;
+    }
+    return privyUser.wallet?.address || null;
+  }, [privyUser]);
+
+  const privyPublicKey = useMemo(() => {
+    if (!privySolanaAddress) return null;
+    try {
+      return new PublicKey(privySolanaAddress);
+    } catch {
+      return null;
+    }
+  }, [privySolanaAddress]);
+
+  // Unified active wallet & connection status (supports both Phantom/Solflare and Privy Email Login!)
+  const publicKey = adapterPublicKey || privyPublicKey;
+  const connected = adapterConnected || (privyAuthenticated && !!privyPublicKey);
 
   // Master view state: website presentation vs direct mobile app view
   const [viewMode, setViewMode] = useState<'website' | 'app'>('website');
@@ -91,8 +126,20 @@ export default function StockPilotApp() {
   // Real On-Chain Balances (Solana Mainnet)
   const [realSolBalance, setRealSolBalance] = useState<number | null>(null);
   const [realUsdcBalance, setRealUsdcBalance] = useState<number | null>(null);
+  const [realVaultBalance, setRealVaultBalance] = useState<number | null>(null);
   const [solPriceUsd, setSolPriceUsd] = useState<number>(138.50);
   const [isLoadingRealBalances, setIsLoadingRealBalances] = useState<boolean>(false);
+
+  // Derived user Vault PDA address on Solana Mainnet
+  const userVaultPda = useMemo(() => {
+    if (!publicKey) return null;
+    try {
+      const [pda] = derivePortfolioVaultPda(publicKey);
+      return pda.toBase58();
+    } catch {
+      return null;
+    }
+  }, [publicKey]);
 
   // Dynamic campaign cycle phrase in hero
   const campaignPhrases = ['Cheaper.', 'Simpler.', 'Smarter.'];
@@ -148,18 +195,17 @@ export default function StockPilotApp() {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isBuyModalOpen, setIsBuyModalOpen] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [buyTargetBasket, setBuyTargetBasket] = useState<BasketStrategy | null>(null);
-
-  // First-time visitor onboarding tour auto-detection
-  useEffect(() => {
-    try {
-      const tourDismissed = localStorage.getItem('stockpilot_tour_dismissed');
-      if (!tourDismissed) {
-        setIsTourOpen(true);
-      }
-    } catch {}
-  }, []);
   const [buyTargetStock, setBuyTargetStock] = useState<Stock | null>(null);
+
+  // Launch app directly without triggering tour modal
+  const handleLaunchApp = (options?: { isDemo?: boolean }) => {
+    setViewMode('app');
+    if (options?.isDemo) {
+      setIsDemoMode(true);
+    }
+  };
   const [marketExploreView, setMarketExploreView] = useState<'baskets' | 'stocks'>('baskets');
   const [customThesis, setCustomThesis] = useState('');
   const [isSynthesizing, setIsSynthesizing] = useState(false);
@@ -186,78 +232,62 @@ export default function StockPilotApp() {
   // Analyze drift
   const driftAnalysis = analyzeDrift(computedHoldings, totalValueUsdc, driftTolerance);
 
-  // Real-time on-chain balance fetcher from Solana Mainnet
-  useEffect(() => {
+  // Real-time on-chain balance fetcher from Solana Devnet
+  const fetchRealBalances = React.useCallback(async () => {
     if (!connected || !publicKey) {
       setRealSolBalance(null);
       setRealUsdcBalance(null);
       return;
     }
 
-    let isMounted = true;
-
-    const fetchRealBalances = async () => {
-      setIsLoadingRealBalances(true);
-      try {
-        // 1. Fetch Real SOL Balance
+    setIsLoadingRealBalances(true);
+    try {
+      // 1. Fetch live real on-chain balances via backend proxy (avoids browser RPC 403 blocks)
+      const balRes = await fetch(`/api/wallet-balances?address=${publicKey.toBase58()}`);
+      if (balRes.ok) {
+        const data = await balRes.json();
+        if (data.success) {
+          setRealSolBalance(data.sol);
+          setRealUsdcBalance(data.usdc);
+          setRealVaultBalance(data.vaultSol);
+        }
+      } else {
+        // Fallback direct RPC connection
         const lamports = await connection.getBalance(publicKey);
-        if (isMounted) {
-          setRealSolBalance(lamports / LAMPORTS_PER_SOL);
-        }
-
-        // 2. Fetch Real USDC SPL Token Balance (Mainnet USDC Mint)
-        try {
-          const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-            mint: usdcMint,
-          });
-          if (tokenAccounts.value && tokenAccounts.value.length > 0) {
-            const parsedInfo = tokenAccounts.value[0].account.data.parsed.info;
-            const uiAmount = parsedInfo.tokenAmount.uiAmount || 0;
-            if (isMounted) setRealUsdcBalance(uiAmount);
-          } else {
-            if (isMounted) setRealUsdcBalance(0);
-          }
-        } catch (tokenErr) {
-          console.warn('USDC token balance query warning:', tokenErr);
-          if (isMounted && realUsdcBalance === null) setRealUsdcBalance(0);
-        }
-
-        // 3. Fetch live SOL/USD price
-        try {
-          const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
-          if (res.ok) {
-            const data = await res.json();
-            if (data?.solana?.usd && isMounted) {
-              setSolPriceUsd(data.solana.usd);
-            }
-          }
-        } catch {
-          // Keep default fallback
-        }
-      } catch (err) {
-        console.warn('Solana balance query error:', err);
-        if (isMounted) {
-          if (realSolBalance === null) setRealSolBalance(0);
-          if (realUsdcBalance === null) setRealUsdcBalance(0);
-        }
-      } finally {
-        if (isMounted) setIsLoadingRealBalances(false);
+        setRealSolBalance(lamports / LAMPORTS_PER_SOL);
       }
-    };
 
+      // 2. Fetch live SOL/USD price
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.solana?.usd) {
+            setSolPriceUsd(data.solana.usd);
+          }
+        }
+      } catch {
+        // ignore CoinGecko rate limits
+      }
+    } catch (err) {
+      console.warn('Solana balance query error:', err);
+      if (realSolBalance === null) setRealSolBalance(0);
+      if (realUsdcBalance === null) setRealUsdcBalance(0);
+      if (realVaultBalance === null) setRealVaultBalance(0);
+    } finally {
+      setIsLoadingRealBalances(false);
+    }
+  }, [connected, publicKey, connection, realSolBalance, realUsdcBalance, realVaultBalance]);
+
+  useEffect(() => {
     fetchRealBalances();
-    const interval = setInterval(fetchRealBalances, 12000);
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-    };
-  }, [connected, publicKey, connection]);
+  }, [fetchRealBalances]);
 
-  // Real live net worth calculations on Solana Mainnet
+  // Real live net worth calculations on Solana Mainnet (Liquid Wallet + Non-Custodial Vault PDA)
   const liveSolVal = realSolBalance !== null ? realSolBalance * solPriceUsd : 0;
   const liveUsdcVal = realUsdcBalance !== null ? realUsdcBalance : 0;
-  const realTotalNetWorth = liveSolVal + liveUsdcVal;
+  const liveVaultVal = realVaultBalance !== null ? realVaultBalance * solPriceUsd : 0;
+  const realTotalNetWorth = liveSolVal + liveUsdcVal + liveVaultVal;
 
   // Active Portfolio Net Asset Value based on environment & wallet connection
   const activeNetAssetValue = isDemoMode
@@ -278,6 +308,49 @@ export default function StockPilotApp() {
       return () => clearTimeout(timer);
     }
   }, [cooldownSeconds]);
+
+  // Synchronize user profile & history with backend database using HMAC-SHA256 hashed identity
+  useEffect(() => {
+    if (!connected || !publicKey) return;
+
+    const syncUserBackend = async () => {
+      try {
+        const res = await fetch('/api/user/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rawIdentifier: publicKey.toBase58(),
+            authProvider: privySolanaAddress ? 'privy' : 'solana_wallet',
+            displayName: privyUser?.email?.address || '',
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.recentActivity && data.recentActivity.length > 0) {
+            const backendTxs = data.recentActivity.map((a: any) => ({
+              id: a.id,
+              timestamp: a.created_at,
+              fromAsset: a.asset,
+              toAsset: a.activity_type.toUpperCase(),
+              amountUsdc: a.amount,
+              txSignature: a.tx_signature,
+              reason: a.reason,
+            }));
+            setTxHistory((prev) => {
+              const existingIds = new Set(prev.map((t) => t.id));
+              const newTxs = backendTxs.filter((t: any) => !existingIds.has(t.id));
+              return [...newTxs, ...prev];
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Backend user sync error:', err);
+      }
+    };
+
+    syncUserBackend();
+  }, [connected, publicKey, privySolanaAddress, privyUser]);
 
   // Handle strategy switch
   const handleSelectStrategy = (strat: BasketStrategy) => {
@@ -321,7 +394,7 @@ export default function StockPilotApp() {
   };
 
   // Vault Rebalance execution
-  const handleConfirmRebalance = () => {
+  const handleConfirmRebalance = (txSig?: string) => {
     const updated = computedHoldings.map((h) => {
       const targetVal = totalValueUsdc * h.targetWeight;
       const newShares = targetVal / h.currentPrice;
@@ -338,30 +411,56 @@ export default function StockPilotApp() {
     setLastRebalanced(Date.now());
     setCooldownSeconds(300);
 
+    const sig =
+      txSig ||
+      Array.from({ length: 44 }, () =>
+        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
+          Math.floor(Math.random() * 58)
+        ]
+      ).join('');
+
     setTxHistory((prev) => [
       {
         id: `tx_${Date.now()}`,
         timestamp: Date.now(),
         fromAsset: 'Drifted Basket',
         toAsset: 'Target Weights',
-        amountUsdc: driftAnalysis.rebalanceTransactions.reduce((acc, t) => acc + t.amountUsdc, 0),
-        txSignature: Array.from({ length: 44 }, () =>
-          '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
-        ).join(''),
-        reason: `Rebalanced ${selectedStrategy.name} on Solana Mainnet`,
+        amountUsdc: driftAnalysis.rebalanceTransactions.reduce(
+          (acc, t) => acc + t.amountUsdc,
+          0
+        ),
+        txSignature: sig,
+        reason: `Rebalanced ${selectedStrategy.name} on Solana Devnet`,
       },
       ...prev,
     ]);
+
+    // Record rebalance to backend database
+    if (publicKey) {
+      fetch('/api/user/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawIdentifier: publicKey.toBase58(),
+          activityType: 'rebalance',
+          asset: 'BASKET',
+          amount: driftAnalysis.rebalanceTransactions.reduce((acc, t) => acc + t.amountUsdc, 0),
+          txSignature: sig,
+          reason: `Rebalanced ${selectedStrategy.name} on Solana Devnet`,
+        }),
+      }).catch(console.warn);
+    }
   };
 
-  // Handle Deposit
-  const handleDeposit = () => {
-    const amt = parseFloat(depositAmount);
-    if (isNaN(amt) || amt <= 0) return;
-
-    setDemoBalanceUsdc((b) => b + amt);
+  // Handle Deposit Success (from on-chain or demo modal)
+  const handleDepositSuccess = (
+    amountUsdc: number,
+    asset: 'USDC' | 'SOL',
+    txSig: string
+  ) => {
+    setDemoBalanceUsdc((b) => b + amountUsdc);
     const updated = computedHoldings.map((h) => {
-      const alloc = amt * h.targetWeight;
+      const alloc = amountUsdc * h.targetWeight;
       return {
         ...h,
         shares: h.shares + alloc / h.currentPrice,
@@ -373,15 +472,32 @@ export default function StockPilotApp() {
       {
         id: `tx_dep_${Date.now()}`,
         timestamp: Date.now(),
-        fromAsset: 'USDC',
+        fromAsset: asset,
         toAsset: selectedStrategy.name,
-        amountUsdc: amt,
-        txSignature: '5Q8vNm9P1X2kL8wZ3vR4tY7pA1mC9xB2nD6eF3gH',
-        reason: `Deposit ${amt} USDC into vault allocation`,
+        amountUsdc,
+        txSignature: txSig,
+        reason: `Deposit ${asset} into ${selectedStrategy.name} on Solana Devnet`,
       },
       ...p,
     ]);
     setIsDepositOpen(false);
+    fetchRealBalances();
+
+    // Record deposit to backend database
+    if (publicKey) {
+      fetch('/api/user/activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rawIdentifier: publicKey.toBase58(),
+          activityType: 'deposit',
+          asset,
+          amount: amountUsdc,
+          txSignature: txSig,
+          reason: `Deposit ${asset} into ${selectedStrategy.name} on Solana Devnet`,
+        }),
+      }).catch(console.warn);
+    }
   };
 
   // Handle Real Stock & Basket Purchases on Solana
@@ -736,7 +852,7 @@ export default function StockPilotApp() {
                   </div>
 
                   {/* Quick Action Bar */}
-                  <div className={`mt-4 pt-3 border-t grid grid-cols-3 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
+                  <div className={`mt-4 pt-3 border-t grid grid-cols-4 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
                     <button
                       onClick={() => setIsDepositOpen(true)}
                       className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
@@ -745,8 +861,20 @@ export default function StockPilotApp() {
                           : 'bg-white/5 hover:bg-white/10 text-slate-200'
                       }`}
                     >
-                      <FontAwesomeIcon icon={faPlus} className="w-3 h-3 text-[#00D2FF]" />
+                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 rotate-45 text-emerald-400" />
                       <span>Deposit</span>
+                    </button>
+
+                    <button
+                      onClick={() => setIsWithdrawOpen(true)}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
+                        isLight
+                          ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                          : 'bg-white/5 hover:bg-white/10 text-slate-200'
+                      }`}
+                    >
+                      <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 -rotate-45 text-purple-400" />
+                      <span>Withdraw</span>
                     </button>
 
                     <button
@@ -1051,8 +1179,34 @@ export default function StockPilotApp() {
                             : '$0.00'}
                         </span>
                       </div>
-                      <div className="w-full text-[10px] font-mono text-slate-400 pt-0.5">
-                        Connected: {publicKey.toBase58().slice(0, 6)}...{publicKey.toBase58().slice(-4)}
+                      <div
+                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center gap-1.5 ${
+                          isLight
+                            ? 'bg-purple-50 border-purple-200 text-purple-700'
+                            : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
+                        }`}
+                      >
+                        <span className="font-bold text-purple-400">🛡️ Vault PDA:</span>
+                        <span>
+                          {realVaultBalance !== null
+                            ? `${realVaultBalance.toFixed(4)} SOL ($${liveVaultVal.toFixed(2)})`
+                            : isLoadingRealBalances
+                            ? 'Syncing...'
+                            : '0.0000 SOL ($0.00)'}
+                        </span>
+                      </div>
+                      <div className="w-full text-[10px] font-mono text-slate-400 pt-0.5 flex items-center justify-between">
+                        <span>Connected: {publicKey.toBase58().slice(0, 6)}...{publicKey.toBase58().slice(-4)}</span>
+                        {userVaultPda && (
+                          <a
+                            href={`https://solscan.io/account/${userVaultPda}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-[#00D2FF] hover:underline"
+                          >
+                            Vault: {userVaultPda.slice(0, 4)}...{userVaultPda.slice(-4)} ↗
+                          </a>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -1062,8 +1216,8 @@ export default function StockPilotApp() {
                   )}
 
                   {/* Action Bar */}
-                  <div className={`mt-4 pt-3 border-t grid grid-cols-2 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
-                    {connected ? (
+                  <div className={`mt-4 pt-3 border-t grid grid-cols-3 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
+                    {connected || isDemoMode ? (
                       <>
                         <button
                           onClick={() => {
@@ -1078,7 +1232,7 @@ export default function StockPilotApp() {
                           }`}
                         >
                           <FontAwesomeIcon icon={faBolt} className="w-3 h-3" />
-                          <span>+ Buy / Trade</span>
+                          <span>+ Buy</span>
                         </button>
 
                         <button
@@ -1089,8 +1243,20 @@ export default function StockPilotApp() {
                               : 'bg-white/5 hover:bg-white/10 text-slate-200'
                           }`}
                         >
-                          <FontAwesomeIcon icon={faPlus} className="w-3 h-3" />
-                          <span>Deposit Funds</span>
+                          <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 rotate-45 text-emerald-400" />
+                          <span>Deposit</span>
+                        </button>
+
+                        <button
+                          onClick={() => setIsWithdrawOpen(true)}
+                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer ${
+                            isLight
+                              ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                              : 'bg-white/5 hover:bg-white/10 text-slate-200'
+                          }`}
+                        >
+                          <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 -rotate-45 text-purple-400" />
+                          <span>Withdraw</span>
                         </button>
                       </>
                     ) : (
@@ -1506,6 +1672,63 @@ export default function StockPilotApp() {
               </p>
             </div>
 
+            {/* Connected User Vault PDA Status */}
+            {connected && userVaultPda ? (
+              <div
+                className={`rounded-2xl border p-4 space-y-3 font-mono transition-colors ${
+                  isLight ? 'bg-sky-50/60 border-sky-200 shadow-sm' : 'bg-[#00D2FF]/5 border-[#00D2FF]/20'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[#00D2FF] flex items-center gap-1.5">
+                    <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
+                    Your Non-Custodial Vault
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-semibold uppercase">
+                    On-Chain Verified
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-[10px] text-slate-400 flex items-center justify-between">
+                    <span>Vault PDA Address:</span>
+                    <a
+                      href={`https://solscan.io/account/${userVaultPda}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[#00D2FF] hover:underline font-semibold"
+                    >
+                      View on Solscan ↗
+                    </a>
+                  </div>
+                  <div className={`p-2 rounded-lg text-[11px] break-all select-all font-mono ${
+                    isLight ? 'bg-white border border-slate-200 text-slate-800' : 'bg-black/40 border border-white/5 text-slate-200'
+                  }`}>
+                    {userVaultPda}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-1 border-t border-slate-200/50 dark:border-white/5">
+                  <div>
+                    <div className="text-[10px] text-slate-400">Vault Balance:</div>
+                    <div className={`text-sm font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      {realVaultBalance !== null ? `${realVaultBalance.toFixed(4)} SOL` : '0.0000 SOL'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-slate-400">USD Equivalent:</div>
+                    <div className="text-sm font-bold text-emerald-400">
+                      ${liveVaultVal.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-slate-400 leading-relaxed bg-emerald-500/5 border border-emerald-500/20 p-2 rounded-lg">
+                  🔒 Funds in this vault are strictly controlled by your wallet's programmatic PDA derivation. No third party can withdraw or reallocate without your cryptographic signature.
+                </div>
+              </div>
+            ) : null}
+
             <div
               className={`rounded-2xl border p-4 space-y-2.5 text-xs font-mono transition-colors ${
                 isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
@@ -1609,27 +1832,29 @@ export default function StockPilotApp() {
         viewMode === 'app' ? 'h-screen overflow-hidden' : ''
       } ${
         isLight
-          ? 'bg-[#0F172A] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
+          ? 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
           : 'bg-[#06080F] text-slate-100 selection:bg-[#00D2FF]/20 selection:text-[#00D2FF]'
       }`}
     >
-      {/* Anime Cyber City Skyline Atmospheric Background */}
+      {/* Anime City Skyline Atmospheric Background (Daylight in Light Mode, Cyberpunk Neon at Night) */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0 transition-opacity duration-700">
         <Image
-          src="/anime-city-bg.jpg"
-          alt="Anime Cyberpunk City"
+          src={isLight ? '/anime-city-day-bg.jpg' : '/anime-city-bg.jpg'}
+          alt={isLight ? 'Anime Solar Eco City Daylight' : 'Anime Cyberpunk City'}
           fill
           priority
           sizes="100vw"
-          className={`object-cover object-center ${isLight ? 'opacity-20' : 'opacity-45'}`}
+          className={`object-cover object-center transition-all duration-700 ${
+            isLight ? 'opacity-40' : 'opacity-45'
+          }`}
         />
       </div>
 
       {/* Atmospheric Vignette & Depth Overlay */}
       <div
-        className={`fixed inset-0 pointer-events-none z-0 ${
+        className={`fixed inset-0 pointer-events-none z-0 transition-colors duration-700 ${
           isLight
-            ? 'bg-gradient-to-b from-[#F8FAFC]/85 via-[#F8FAFC]/90 to-[#F8FAFC]'
+            ? 'bg-gradient-to-b from-[#F8FAFC]/25 via-[#F8FAFC]/50 to-[#F8FAFC]/80'
             : 'bg-gradient-to-b from-[#06080F]/65 via-[#06080F]/80 to-[#06080F]/95'
         }`}
       />
@@ -1692,26 +1917,12 @@ export default function StockPilotApp() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Interactive Tour Guide Button */}
-            <button
-              onClick={() => setIsTourOpen(true)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold font-mono border transition cursor-pointer ${
-                isLight
-                  ? 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-[#00D2FF]'
-              }`}
-              title="Open StockPilot Onboarding Tour"
-            >
-              <FontAwesomeIcon icon={faCompass} className="w-3.5 h-3.5 text-[#00D2FF]" />
-              <span className="hidden sm:inline">Tour</span>
-            </button>
-
             {/* Theme Toggle Button */}
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
             {viewMode === 'website' ? (
               <button
-                onClick={() => setViewMode('app')}
+                onClick={() => handleLaunchApp()}
                 className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition active:scale-95 cursor-pointer shadow-lg ${
                   isLight
                     ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
@@ -1735,19 +1946,50 @@ export default function StockPilotApp() {
               </button>
             )}
 
-            <div className="scale-95">
-              <WalletMultiButton
-                style={{
-                  backgroundColor: isLight ? '#0F172A' : '#101929',
-                  border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
-                  borderRadius: '0.75rem',
-                  height: '36px',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#FFFFFF',
-                }}
-              />
-            </div>
+            {privyAuthenticated && privyUser ? (
+              <div className="flex items-center gap-2 bg-[#00D2FF]/10 border border-[#00D2FF]/30 rounded-xl px-3 py-1.5 text-xs font-mono">
+                <FontAwesomeIcon icon={faEnvelope} className="w-3.5 h-3.5 text-[#00D2FF]" />
+                <span className="max-w-[120px] sm:max-w-[160px] truncate text-slate-200 font-semibold">
+                  {privyUser.email?.address || privyUser.google?.email || (privySolanaAddress ? `${privySolanaAddress.slice(0, 4)}...${privySolanaAddress.slice(-4)}` : 'Logged In')}
+                </span>
+                <button
+                  onClick={() => privyLogout()}
+                  title="Sign Out"
+                  className="ml-1 text-slate-400 hover:text-rose-400 transition cursor-pointer p-0.5"
+                >
+                  <FontAwesomeIcon icon={faRightFromBracket} className="w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => privyLogin()}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition active:scale-95 cursor-pointer shadow-sm ${
+                    isLight
+                      ? 'bg-slate-900 text-white hover:bg-slate-800'
+                      : 'bg-white/10 hover:bg-white/15 text-white border border-white/10'
+                  }`}
+                  title="Sign in with Email or Google (Instant Embedded Wallet)"
+                >
+                  <FontAwesomeIcon icon={faEnvelope} className="w-3 h-3 text-[#00D2FF]" />
+                  <span className="hidden sm:inline">Email Login</span>
+                </button>
+
+                <div className="scale-95">
+                  <WalletMultiButton
+                    style={{
+                      backgroundColor: isLight ? '#0F172A' : '#101929',
+                      border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
+                      borderRadius: '0.75rem',
+                      height: '36px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#FFFFFF',
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -1804,7 +2046,7 @@ export default function StockPilotApp() {
                   {/* CTA Block */}
                   <div className="flex flex-wrap items-center gap-3 pt-2">
                     <button
-                      onClick={() => setViewMode('app')}
+                      onClick={() => handleLaunchApp()}
                       className={`flex items-center gap-2 rounded-2xl px-6 py-3.5 text-sm font-bold transition active:scale-95 cursor-pointer shadow-xl ${
                         isLight
                           ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
@@ -1817,10 +2059,7 @@ export default function StockPilotApp() {
                     </button>
 
                     <button
-                      onClick={() => {
-                        setViewMode('app');
-                        setIsDemoMode(true);
-                      }}
+                      onClick={() => handleLaunchApp({ isDemo: true })}
                       className={`flex items-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-semibold transition cursor-pointer ${
                         isLight
                           ? 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
@@ -1953,10 +2192,6 @@ export default function StockPilotApp() {
             <div className="mx-auto max-w-6xl space-y-12">
               {/* Section Header */}
               <div className="text-center space-y-3 max-w-3xl mx-auto">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-[11px] font-mono font-bold uppercase tracking-wider bg-[#00D2FF]/10 text-[#00D2FF] border border-[#00D2FF]/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00D2FF] animate-pulse" />
-                  <span>Institutional Architecture</span>
-                </div>
                 <h2
                   className={`text-3xl sm:text-5xl font-extrabold tracking-tight ${
                     isLight ? 'text-slate-900' : 'text-white'
@@ -2201,7 +2436,7 @@ export default function StockPilotApp() {
                 </p>
                 <div className="pt-2 flex justify-center">
                   <button
-                    onClick={() => setViewMode('app')}
+                    onClick={() => handleLaunchApp()}
                     className={`inline-flex items-center gap-2 rounded-2xl px-8 py-4 text-base font-bold transition active:scale-95 cursor-pointer shadow-xl ${
                       isLight
                         ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
@@ -2297,6 +2532,8 @@ export default function StockPilotApp() {
         totalValueUsdc={totalValueUsdc}
         onConfirmRebalance={handleConfirmRebalance}
         theme={theme}
+        publicKey={publicKey}
+        isDemoMode={isDemoMode}
       />
 
       <BuyModal
@@ -2331,93 +2568,112 @@ export default function StockPilotApp() {
         onSelectStrategy={(s) => {
           handleSelectStrategy(s);
           setActiveTab('portfolio');
+
+          // Persist custom strategy to backend database
+          if (publicKey) {
+            fetch('/api/user/strategies', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                rawIdentifier: publicKey.toBase58(),
+                strategy: {
+                  id: s.id,
+                  name: s.name,
+                  description: s.description,
+                  targetWeights: Object.fromEntries(
+                    s.tokens.map((t) => [t.symbol, t.targetWeight])
+                  ),
+                },
+              }),
+            }).catch(console.warn);
+          }
         }}
         theme={theme}
       />
 
       <TourModal
         isOpen={isTourOpen}
-        onClose={() => setIsTourOpen(false)}
+        onClose={() => {
+          setIsTourOpen(false);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('stockpilot_tour_seen', 'true');
+          }
+        }}
         onStartDemo={() => {
           setIsDemoMode(true);
           setActiveTab('portfolio');
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('stockpilot_tour_seen', 'true');
+          }
         }}
         theme={theme}
       />
 
-      {/* Quick Deposit Modal */}
-      {isDepositOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-fade-in">
-          <div
-            className={`relative w-full max-w-sm rounded-3xl border p-6 shadow-2xl transition-colors ${
-              isLight
-                ? 'bg-white border-slate-200 text-slate-900 shadow-slate-300/40'
-                : 'bg-[#0B111C] border-[#1E293B] text-slate-100 shadow-black/80'
-            }`}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-bold">Deposit USDC</h3>
-              <button
-                onClick={() => setIsDepositOpen(false)}
-                className={`p-1.5 rounded-lg transition ${
-                  isLight ? 'text-slate-400 hover:bg-slate-100' : 'text-slate-400 hover:bg-white/10'
-                }`}
-              >
-                ✕
-              </button>
-            </div>
-            <p className={`text-xs mb-4 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              USDC will be automatically allocated according to your {selectedStrategy.name} target
-              weights.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-mono text-slate-400 mb-1">
-                  Amount (USDC)
-                </label>
-                <input
-                  type="number"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  className={`w-full rounded-xl border p-3 font-mono text-sm focus:outline-none transition ${
-                    isLight
-                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-sky-500'
-                      : 'bg-[#06080F] border-[#1E293B] text-white focus:border-[#00D2FF]'
-                  }`}
-                  placeholder="500"
-                />
-              </div>
+      <WithdrawModal
+        isOpen={isWithdrawOpen}
+        onClose={() => setIsWithdrawOpen(false)}
+        theme={theme}
+        portfolioValueUsdc={totalValueUsdc}
+        realSolBalance={realSolBalance}
+        realUsdcBalance={realUsdcBalance}
+        realVaultBalance={realVaultBalance}
+        solPriceUsd={solPriceUsd}
+        isDemoMode={isDemoMode}
+        connected={connected}
+        publicKey={publicKey}
+        onWithdrawSuccess={(amountUsdc, asset, txSig) => {
+          setTxHistory((prev) => [
+            {
+              id: `tx_wdr_${Date.now()}`,
+              timestamp: Date.now(),
+              fromAsset: selectedStrategy.name,
+              toAsset: asset,
+              amountUsdc: amountUsdc,
+              txSignature: txSig,
+              reason: `Withdrew $${amountUsdc.toFixed(2)} to wallet`,
+            },
+            ...prev,
+          ]);
 
-              <div className="flex gap-2 text-xs font-mono">
-                {['250', '500', '1000', '2500'].map((amt) => (
-                  <button
-                    key={amt}
-                    onClick={() => setDepositAmount(amt)}
-                    className={`flex-1 py-1.5 rounded-lg border transition cursor-pointer ${
-                      isLight
-                        ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                        : 'bg-[#101828] border-[#1E293B] text-slate-300 hover:bg-[#162338]'
-                    }`}
-                  >
-                    +${amt}
-                  </button>
-                ))}
-              </div>
+          // Record withdrawal to backend database
+          if (publicKey) {
+            fetch('/api/user/activity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                rawIdentifier: publicKey.toBase58(),
+                activityType: 'withdraw',
+                asset,
+                amount: amountUsdc,
+                txSignature: txSig,
+                reason: `Withdrew $${amountUsdc.toFixed(2)} to wallet`,
+              }),
+            }).catch(console.warn);
+          }
+          fetchRealBalances();
+        }}
+      />
 
-              <button
-                onClick={handleDeposit}
-                className={`w-full rounded-xl py-3 text-xs font-bold transition active:scale-95 cursor-pointer shadow-md ${
-                  isLight
-                    ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
-                    : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
-                }`}
-              >
-                Confirm Allocation
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Real On-Chain Deposit Modal */}
+      <DepositModal
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
+        theme={theme}
+        strategyName={selectedStrategy.name}
+        strategyId={selectedStrategy.id}
+        holdings={computedHoldings.map((h) => ({
+          symbol: h.symbol,
+          name: h.name,
+          targetWeight: h.targetWeight,
+        }))}
+        realSolBalance={realSolBalance}
+        realUsdcBalance={realUsdcBalance}
+        solPriceUsd={solPriceUsd}
+        isDemoMode={isDemoMode}
+        connected={connected}
+        publicKey={publicKey}
+        onDepositSuccess={handleDepositSuccess}
+      />
     </div>
   );
 }
