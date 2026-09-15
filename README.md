@@ -24,11 +24,37 @@ StockPilot is an autonomous, non-custodial stock robo-advisor running natively o
 Traditional wealth managers and retail brokerages are restricted by legacy banking infrastructure: markets close at 4:00 PM, settlements take multiple days, index rebalances suffer from manual execution drag, and investors incur 0.25% to 1.50% in recurring management fees while surrendering asset custody to centralized custodians.
 
 StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-frequency Solana primitives to deliver:
-* Continuous 24/7/365 Liquidity: Trade and rebalance tokenized equity baskets with zero market pauses or holiday closures.
-* Sub-Second Atomic Rebalancing: Automated drift detection triggers rebalances executed in <400ms slots via Jupiter DEX for ~$0.0008 in gas.
-* 100% Non-Custodial Anchor Vaults: User assets reside in isolated Program-Derived Address (PDA) vaults where only the user's cryptographic key can authorize withdrawals.
-* Consumer-Grade Web2 and Web3 Onboarding: Instant embedded wallet creation via Privy (Google and Email) alongside native Phantom and Solflare support.
-* Simulated Sandbox: Interactive preloaded test environment to model portfolio volatility and observe automated rebalancing prior to deploying capital.
+* **Continuous 24/7/365 Liquidity:** Trade and rebalance tokenized equity baskets with zero market pauses or holiday closures.
+* **Deterministic 2-Layer PDA Vault Architecture:** Separates idle liquidity (Layer 1: 0-risk Vault Cash Reserve in USDC) from active market allocations (Layer 2: AI Strategy Baskets with 1-Tap deployment).
+* **Sub-Second Atomic Rebalancing:** Automated drift detection triggers rebalances executed in <400ms slots via Jupiter DEX for ~$0.0008 in gas.
+* **100% Non-Custodial Anchor Vaults:** User assets reside in isolated Program-Derived Address (PDA) vaults where only the user's cryptographic key can authorize withdrawals or reallocations.
+* **Consumer-Grade Web2 and Web3 Onboarding:** Instant embedded wallet creation via Privy (Google and Email) alongside native Phantom and Solflare support.
+* **Simulated Sandbox:** Interactive preloaded test environment to model portfolio volatility, test 1-tap deployment, and observe automated rebalancing prior to deploying capital.
+
+---
+
+## 2-Layer Non-Custodial PDA Vault Architecture
+
+Most on-chain vaults force user deposits directly into active market exposure on block 0. StockPilot splits the user's non-custodial Anchor PDA into two deterministic layers:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                    StockPilot Non-Custodial PDA Vault                       │
+│              seeds = [b"stockpilot_vault", user_authority]                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────┐   1-Tap Deploy    ┌──────────────────┐ │
+│  │   1️⃣ Vault Cash Reserve (USDC)   │ ───────────────>  │ 2️⃣ Active Baskets │ │
+│  │  • 0% Market Exposure           │                   │  • xNVDA, xAAPL  │ │
+│  │  • Idle Stable Yield / Liquidity│ <───────────────  │  • xMSFT, xTSLA  │ │
+│  │  • Instant 1-Click Withdrawal   │      De-Risk      │  • Pyth Rebalance│ │
+│  └─────────────────────────────────┘                   └──────────────────┘ │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+1. **Layer 1: Vault Cash Reserve (USDC)** — 0-risk idle liquidity stored safely in the user's private Anchor PDA. Users can fund cash on their own schedule and withdraw back to their wallet at any time.
+2. **Layer 2: Active Strategy Baskets** — Tokenized US equity allocations (`xNVDA`, `xAAPL`, `xMSFT`, `xTSLA`) with sub-second autonomous Pyth drift correction and 1-tap deployment from the cash reserve.
 
 ---
 
@@ -38,6 +64,7 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
 | :--- | :--- | :--- | :--- |
 | Trading Hours | 9:30 AM – 4:00 PM EST (Closed Weekends) | Batch end-of-day execution | 24/7/365 Continuous Real-Time |
 | Asset Custody | Centralized broker street name | Third-party clearing custodian | 100% Non-Custodial Anchor PDA Vault |
+| Vault Model | Forced immediate capital lockup | Pooled omnibus accounts | 2-Layer Deterministic (Cash Reserve + Baskets) |
 | Settlement Time | T+1 / T+2 days | T+2 days | < 400ms Sub-Second Atomic Slots |
 | Annual Management Drag | Hidden spread + margin fees | 0.25% – 1.50% AUM annual fee | 0.00% Annual AUM Drag |
 | Network Fee per Trade | $0 commissions (PFOF slippage) | Integrated into custodian drag | <$0.001 (Solana Network Gas) |
@@ -69,6 +96,8 @@ StockPilot leverages tokenized US equities (xNVDA, xTSM, xAMD, xMSFT) and high-f
         │      Program ID: CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK       │
         ├─────────────────────────────────────────────────────────────┤
         │ • PDA User Vault: seeds = [b"stockpilot_vault", authority]  │
+        │ • Layer 1: Vault Cash Reserve (USDC 0-Risk Idle Liquidity)  │
+        │ • Layer 2: Active Strategy Baskets (1-Tap Deploy / De-Risk) │
         │ • On-Chain 0.15% Protocol Fee Deduction (15 bps to Treasury)│
         │ • On-Chain State & Timelock Cooldown Coordinator            │
         │ • Owner Authorization Constraints (authority == vault.owner)│

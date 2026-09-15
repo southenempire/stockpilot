@@ -54,6 +54,8 @@ export interface PortfolioState {
   strategyId: string;
   strategyName: string;
   totalValueUsdc: number;
+  vaultCashReserveUsdc: number;
+  activePositionsValueUsdc: number;
   initialInvestmentUsdc: number;
   unallocatedUsdc: number;
   pnlUsdc: number;

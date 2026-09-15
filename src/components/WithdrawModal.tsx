@@ -9,6 +9,8 @@ import {
   faWallet,
   faExternalLink,
   faTriangleExclamation,
+  faShieldHalved,
+  faChartPie,
 } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { PublicKey } from '@solana/web3.js';
@@ -20,6 +22,8 @@ interface WithdrawModalProps {
   onClose: () => void;
   theme?: 'dark' | 'light';
   portfolioValueUsdc: number;
+  vaultCashReserveUsdc?: number;
+  activePositionsUsdc?: number;
   realSolBalance: number | null;
   realUsdcBalance: number | null;
   realVaultBalance: number | null;
@@ -27,7 +31,12 @@ interface WithdrawModalProps {
   isDemoMode: boolean;
   connected: boolean;
   publicKey: PublicKey | null;
-  onWithdrawSuccess: (amountUsdc: number, asset: 'USDC' | 'SOL', txSig: string) => void;
+  onWithdrawSuccess: (
+    amountUsdc: number,
+    asset: 'USDC' | 'SOL',
+    txSig: string,
+    source: 'reserve' | 'positions'
+  ) => void;
 }
 
 export default function WithdrawModal({
@@ -35,6 +44,8 @@ export default function WithdrawModal({
   onClose,
   theme = 'dark',
   portfolioValueUsdc,
+  vaultCashReserveUsdc = 0,
+  activePositionsUsdc = 0,
   realSolBalance,
   realUsdcBalance,
   realVaultBalance,
@@ -48,8 +59,11 @@ export default function WithdrawModal({
   const { publicKey: walletPublicKey, sendTransaction } = useWallet();
   const activePublicKey = propPublicKey || walletPublicKey;
 
+  const [withdrawSource, setWithdrawSource] = useState<'reserve' | 'positions'>(
+    vaultCashReserveUsdc > 0 ? 'reserve' : 'positions'
+  );
   const [withdrawAsset, setWithdrawAsset] = useState<'USDC' | 'SOL'>('USDC');
-  const [amountInput, setAmountInput] = useState('10');
+  const [amountInput, setAmountInput] = useState('100');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
@@ -58,11 +72,16 @@ export default function WithdrawModal({
   if (!isOpen) return null;
 
   const isLight = theme === 'light';
-  const availableUsdc = isDemoMode
-    ? portfolioValueUsdc
+
+  // Calculate available based on selected source
+  const sourceAvailableUsdc = isDemoMode
+    ? withdrawSource === 'reserve'
+      ? vaultCashReserveUsdc
+      : activePositionsUsdc
     : (realUsdcBalance ?? 0) + ((realVaultBalance ?? 0) * solPriceUsd);
-  const availableSol = solPriceUsd > 0 ? availableUsdc / solPriceUsd : 0;
-  const maxAvailable = withdrawAsset === 'USDC' ? availableUsdc : availableSol;
+
+  const availableSol = solPriceUsd > 0 ? sourceAvailableUsdc / solPriceUsd : 0;
+  const maxAvailable = withdrawAsset === 'USDC' ? sourceAvailableUsdc : availableSol;
 
   const parsedAmount = parseFloat(amountInput) || 0;
   const amountUsdcEquivalent =
@@ -79,12 +98,14 @@ export default function WithdrawModal({
       return;
     }
     if (maxAvailable <= 0) {
-      setErrorMessage('Vault portfolio balance is $0.00. Deposit funds into the vault first.');
+      setErrorMessage(
+        `Selected source balance is $0.00 (${withdrawSource === 'reserve' ? 'Cash Reserve' : 'Active Positions'}).`
+      );
       return;
     }
     if (parsedAmount > maxAvailable) {
       setErrorMessage(
-        `Withdrawal amount exceeds available vault balance (${withdrawAsset === 'USDC' ? '$' + maxAvailable.toFixed(2) : maxAvailable.toFixed(4) + ' SOL'}).`
+        `Withdrawal amount exceeds available balance (${withdrawAsset === 'USDC' ? '$' + maxAvailable.toFixed(2) : maxAvailable.toFixed(4) + ' SOL'}).`
       );
       return;
     }
@@ -133,12 +154,12 @@ export default function WithdrawModal({
           // Ignore confetti errors
         }
 
-        onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig);
+        onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig, withdrawSource);
         return;
       }
 
-      // Fallback to simulated mode (for demo mode or when wallet not actively connected)
-      await new Promise((r) => setTimeout(r, 1200));
+      // Fallback to simulated mode
+      await new Promise((r) => setTimeout(r, 1000));
       const simulatedSig = Array.from({ length: 44 }, () =>
         '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
           Math.floor(Math.random() * 58)
@@ -160,7 +181,7 @@ export default function WithdrawModal({
         // Ignore confetti
       }
 
-      onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, simulatedSig);
+      onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, simulatedSig, withdrawSource);
     } catch (err: any) {
       console.error('Withdrawal error:', err);
       setIsSubmitting(false);
@@ -204,8 +225,10 @@ export default function WithdrawModal({
                   isLight ? 'text-slate-500' : 'text-slate-400'
                 }`}
               >
-                {amountInput} {withdrawAsset} (~${amountUsdcEquivalent.toFixed(2)})
-                sent to your wallet
+                {amountInput} {withdrawAsset} returned to your wallet from{' '}
+                <span className="font-semibold text-[#00D2FF]">
+                  {withdrawSource === 'reserve' ? '1️⃣ Vault Cash Reserve' : '2️⃣ Active Strategy Positions'}
+                </span>
               </p>
             </div>
             <div
@@ -229,12 +252,12 @@ export default function WithdrawModal({
                 <FontAwesomeIcon icon={faExternalLink} className="w-2.5 h-2.5 shrink-0" />
               </a>
               <div className="text-slate-400 text-[10px] pt-1">
-                Recipient:{' '}
+                Recipient Wallet:{' '}
                 {activePublicKey
                   ? `${activePublicKey.toBase58().slice(0, 6)}...${activePublicKey
                       .toBase58()
                       .slice(-4)}`
-                  : 'Connected Wallet'}
+                  : 'Your Wallet'}
               </div>
             </div>
             <button
@@ -252,20 +275,20 @@ export default function WithdrawModal({
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <div>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xs">
                   <FontAwesomeIcon icon={faArrowUp} className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Withdraw Capital</h3>
+                  <h3 className="text-base font-bold">Withdraw Funds</h3>
                   <p
                     className={`text-[11px] ${
                       isLight ? 'text-slate-500' : 'text-slate-400'
                     }`}
                   >
-                    Cash out directly from your on-chain portfolio vault
+                    Withdraw non-custodial PDA vault funds to your wallet
                   </p>
                 </div>
               </div>
@@ -281,6 +304,56 @@ export default function WithdrawModal({
               </div>
             )}
 
+            {/* Source Layer Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                Withdraw From Layer
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setWithdrawSource('reserve')}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    withdrawSource === 'reserve'
+                      ? isLight
+                        ? 'bg-sky-50 border-sky-500 text-slate-900 ring-1 ring-sky-500'
+                        : 'bg-[#00D2FF]/10 border-[#00D2FF] text-white ring-1 ring-[#00D2FF]'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-[#06080F] border-[#1E293B] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px]">1️⃣ Cash Reserve</span>
+                  </div>
+                  <div className="text-[10px] text-emerald-400 font-mono mt-1 font-bold">
+                    ${vaultCashReserveUsdc.toFixed(2)} USDC
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setWithdrawSource('positions')}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                    withdrawSource === 'positions'
+                      ? isLight
+                        ? 'bg-sky-50 border-sky-500 text-slate-900 ring-1 ring-sky-500'
+                        : 'bg-[#00D2FF]/10 border-[#00D2FF] text-white ring-1 ring-[#00D2FF]'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-[#06080F] border-[#1E293B] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px]">2️⃣ Active Basket</span>
+                  </div>
+                  <div className="text-[10px] text-sky-400 font-mono mt-1 font-bold">
+                    ${activePositionsUsdc.toFixed(2)} USDC
+                  </div>
+                </button>
+              </div>
+            </div>
+
             {/* Asset Selector */}
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/20 border border-white/5 text-xs font-mono">
               <button
@@ -294,7 +367,7 @@ export default function WithdrawModal({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                USDC (Stable)
+                USDC (Direct)
               </button>
               <button
                 type="button"
@@ -307,50 +380,47 @@ export default function WithdrawModal({
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                SOL (Native)
+                SOL (Swap & Send)
               </button>
             </div>
 
             {/* Available Balance Box */}
             <div
               className={`p-3 rounded-2xl border text-xs font-mono space-y-1 ${
-                isLight
-                  ? 'bg-slate-50 border-slate-200'
-                  : 'bg-[#06080F] border-[#1E293B]'
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#06080F] border-[#1E293B]'
               }`}
             >
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Vault Balance to Cash Out:</span>
+                <span>Available to Withdraw:</span>
                 <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
                   {withdrawAsset === 'USDC'
-                    ? `$${availableUsdc.toFixed(2)}`
+                    ? `$${sourceAvailableUsdc.toFixed(2)}`
                     : `${availableSol.toFixed(4)} SOL`}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 text-[10px]">
-                <span>Destination:</span>
-                <span className="text-emerald-400 font-bold">Your Wallet Balance</span>
+                <span>Source:</span>
+                <span className="text-[#00D2FF] font-semibold">
+                  {withdrawSource === 'reserve' ? '1️⃣ Vault Cash Reserve (USDC)' : '2️⃣ Active Strategy Basket'}
+                </span>
               </div>
             </div>
 
             {/* Amount Input */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-mono text-slate-400">
-                Withdrawal Amount ({withdrawAsset})
-              </label>
+            <div className="space-y-1">
               <div className="relative">
                 <input
                   type="number"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  className={`w-full rounded-xl border p-3 font-mono text-sm focus:outline-none transition ${
+                  className={`w-full rounded-xl border p-2.5 font-mono text-sm focus:outline-none transition ${
                     isLight
                       ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-sky-500'
                       : 'bg-[#06080F] border-[#1E293B] text-white focus:border-[#00D2FF]'
                   }`}
                   placeholder="10"
                 />
-                <span className="absolute right-3 top-3 text-xs font-mono text-slate-400">
+                <span className="absolute right-3 top-2.5 text-xs font-mono text-slate-400">
                   {withdrawAsset}
                 </span>
               </div>
@@ -374,38 +444,21 @@ export default function WithdrawModal({
               ))}
             </div>
 
-            {/* Withdrawal Destination */}
-            <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between p-2 rounded-xl bg-black/20">
-              <span className="flex items-center gap-1.5">
-                <FontAwesomeIcon icon={faWallet} className="w-3 h-3 text-[#00D2FF]" />
-                Destination:
-              </span>
-              <span className="text-slate-200 font-bold">
-                {activePublicKey
-                  ? `${activePublicKey.toBase58().slice(0, 4)}...${activePublicKey
-                      .toBase58()
-                      .slice(-4)}`
-                  : 'Connected Wallet'}
-              </span>
-            </div>
-
             {/* Action CTA */}
             <button
               onClick={handleExecuteWithdraw}
-              disabled={
-                isSubmitting || parsedAmount <= 0 || parsedAmount > maxAvailable
-              }
+              disabled={isSubmitting || parsedAmount <= 0 || maxAvailable <= 0}
               className={`w-full rounded-xl py-3 text-xs font-bold transition active:scale-95 cursor-pointer shadow-md disabled:opacity-50 flex items-center justify-center gap-2 ${
                 isLight
-                  ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
-                  : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
+                  ? 'bg-purple-600 text-white hover:bg-purple-700 shadow-purple-600/20'
+                  : 'bg-purple-500 text-white hover:bg-purple-400 shadow-purple-500/20'
               }`}
             >
               <FontAwesomeIcon icon={faArrowUp} className="w-3 h-3" />
               <span>
                 {isSubmitting
                   ? 'Processing On-Chain...'
-                  : `Withdraw ${amountInput} ${withdrawAsset}`}
+                  : `Withdraw $${amountUsdcEquivalent.toFixed(2)} to Wallet`}
               </span>
             </button>
           </div>

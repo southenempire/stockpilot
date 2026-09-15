@@ -18,6 +18,7 @@ import PromptModal from '@/components/PromptModal';
 import TourModal from '@/components/TourModal';
 import WithdrawModal from '@/components/WithdrawModal';
 import DepositModal from '@/components/DepositModal';
+import DeployModal from '@/components/DeployModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import StockPilotLogo from '@/components/StockPilotLogo';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -121,9 +122,11 @@ export default function StockPilotApp() {
   // App & Wallet state: Live Mainnet is DEFAULT (Simulated Demo is strictly OPT-IN)
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [demoBalanceUsdc, setDemoBalanceUsdc] = useState(10000);
+  const [vaultCashReserveUsdc, setVaultCashReserveUsdc] = useState(0);
   const [selectedStrategy, setSelectedStrategy] = useState<BasketStrategy>(PREBUILT_STRATEGIES[0]);
   const [driftTolerance, setDriftTolerance] = useState(5.0);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1D' | '1W' | '1M' | '1Y' | 'ALL'>('1M');
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
   // Real On-Chain Balances (Solana Mainnet)
   const [realSolBalance, setRealSolBalance] = useState<number | null>(null);
@@ -223,14 +226,17 @@ export default function StockPilotApp() {
     },
   ]);
 
-  // Recalculate portfolio state
-  const { totalValueUsdc, holdings: computedHoldings } = calculatePortfolioState(
+  // Recalculate portfolio state for active equity positions (Layer 2)
+  const { totalValueUsdc: activePositionsValue, holdings: computedHoldings } = calculatePortfolioState(
     holdings,
     livePrices
   );
 
-  // Analyze drift
-  const driftAnalysis = analyzeDrift(computedHoldings, totalValueUsdc, driftTolerance);
+  // Total Vault Net Asset Value = Layer 1 Vault Cash Reserve + Layer 2 Active Equity Positions
+  const totalValueUsdc = vaultCashReserveUsdc + activePositionsValue;
+
+  // Analyze drift for active basket
+  const driftAnalysis = analyzeDrift(computedHoldings, activePositionsValue, driftTolerance);
 
   // Real-time on-chain balance fetcher from Solana Devnet
   const fetchRealBalances = React.useCallback(async () => {
@@ -297,9 +303,10 @@ export default function StockPilotApp() {
     : 0;
 
   // PnL metrics
-  const baselineCapital = isDemoMode ? demoBalanceUsdc : 10000;
-  const pnlUsdc = totalValueUsdc - baselineCapital;
-  const pnlPercent = Number(((pnlUsdc / baselineCapital) * 100).toFixed(2));
+  const initialCapital = 10000;
+  const currentTotalCapital = isDemoMode ? (demoBalanceUsdc + totalValueUsdc) : (10000 + totalValueUsdc);
+  const pnlUsdc = isDemoMode ? (currentTotalCapital - initialCapital) : (totalValueUsdc - 10000);
+  const pnlPercent = Number(((pnlUsdc / initialCapital) * 100).toFixed(2));
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -393,10 +400,12 @@ export default function StockPilotApp() {
     setLivePrices(initial);
   };
 
-  // Vault Rebalance execution
+  // Vault Rebalance execution (Layer 2 Active Basket)
   const handleConfirmRebalance = (txSig?: string) => {
+    if (activePositionsValue <= 0) return;
+
     const updated = computedHoldings.map((h) => {
-      const targetVal = totalValueUsdc * h.targetWeight;
+      const targetVal = activePositionsValue * h.targetWeight;
       const newShares = targetVal / h.currentPrice;
       return {
         ...h,
@@ -452,47 +461,156 @@ export default function StockPilotApp() {
     }
   };
 
+  // 1-Tap Deploy from Vault Cash Reserve (Layer 1) into Strategy Basket (Layer 2)
+  const handleDeployCashReserve = (
+    amountToDeploy: number,
+    targetStrategy: BasketStrategy = selectedStrategy
+  ) => {
+    if (amountToDeploy <= 0 || amountToDeploy > vaultCashReserveUsdc) return;
+
+    setVaultCashReserveUsdc((c) => Math.max(0, c - amountToDeploy));
+    setSelectedStrategy(targetStrategy);
+
+    setHoldings((prev) => {
+      return targetStrategy.tokens.map((t) => {
+        const stock = SUPPORTED_STOCKS[t.symbol];
+        const price = livePrices[t.symbol] || stock.price;
+        const existing = prev.find((h) => h.symbol === t.symbol);
+        const existingShares = existing ? existing.shares : 0;
+        const alloc = amountToDeploy * t.targetWeight;
+        const newShares = existingShares + alloc / price;
+        return {
+          symbol: t.symbol,
+          name: stock.name,
+          shares: newShares,
+          currentPrice: price,
+          currentValue: newShares * price,
+          targetWeight: t.targetWeight,
+          currentWeight: t.targetWeight,
+          driftPercent: 0,
+          change24h: stock.change24h,
+        };
+      });
+    });
+
+    const sig = Array.from({ length: 44 }, () =>
+      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
+        Math.floor(Math.random() * 58)
+      ]
+    ).join('');
+
+    setTxHistory((prev) => [
+      {
+        id: `tx_deploy_${Date.now()}`,
+        timestamp: Date.now(),
+        fromAsset: '1️⃣ Vault Cash Reserve (USDC)',
+        toAsset: `2️⃣ ${targetStrategy.name}`,
+        amountUsdc: amountToDeploy,
+        txSignature: sig,
+        reason: `1-Tap Deployed $${amountToDeploy.toFixed(2)} from PDA Cash Reserve into ${targetStrategy.name}`,
+      },
+      ...prev,
+    ]);
+
+    setIsDeployModalOpen(false);
+  };
+
+  // Unwind active equity positions back into 0-risk Vault Cash Reserve (Layer 2 -> Layer 1)
+  const handleUnwindToReserve = (amountToUnwind?: number) => {
+    if (activePositionsValue <= 0) return;
+    const unwindVal = amountToUnwind ? Math.min(amountToUnwind, activePositionsValue) : activePositionsValue;
+    const remainRatio = Math.max(0, (activePositionsValue - unwindVal) / activePositionsValue);
+
+    setHoldings((prev) =>
+      prev.map((h) => ({
+        ...h,
+        shares: h.shares * remainRatio,
+        currentValue: h.currentValue * remainRatio,
+      }))
+    );
+
+    setVaultCashReserveUsdc((c) => c + unwindVal);
+
+    const sig = Array.from({ length: 44 }, () =>
+      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
+        Math.floor(Math.random() * 58)
+      ]
+    ).join('');
+
+    setTxHistory((prev) => [
+      {
+        id: `tx_unwind_${Date.now()}`,
+        timestamp: Date.now(),
+        fromAsset: `2️⃣ ${selectedStrategy.name}`,
+        toAsset: '1️⃣ Vault Cash Reserve (USDC)',
+        amountUsdc: unwindVal,
+        txSignature: sig,
+        reason: `De-risked $${unwindVal.toFixed(2)} of equities back into Vault Cash Reserve`,
+      },
+      ...prev,
+    ]);
+  };
+
   // Handle Deposit Success (from on-chain or demo modal)
   const handleDepositSuccess = (
     amountUsdc: number,
     asset: 'USDC' | 'SOL',
-    txSig: string
+    txSig: string,
+    destination: 'reserve' | 'strategy' = 'reserve'
   ) => {
     if (isDemoMode) {
       setDemoBalanceUsdc((b) => Math.max(0, b - amountUsdc));
     }
-    const updated = selectedStrategy.tokens.map((t) => {
-      const stock = SUPPORTED_STOCKS[t.symbol];
-      const price = livePrices[t.symbol] || stock.price;
-      const existing = holdings.find((h) => h.symbol === t.symbol);
-      const existingShares = existing ? existing.shares : 0;
-      const alloc = amountUsdc * t.targetWeight;
-      const newShares = existingShares + alloc / price;
-      return {
-        symbol: t.symbol,
-        name: stock.name,
-        shares: newShares,
-        currentPrice: price,
-        currentValue: newShares * price,
-        targetWeight: t.targetWeight,
-        currentWeight: t.targetWeight,
-        driftPercent: 0,
-        change24h: stock.change24h,
-      };
-    });
-    setHoldings(updated);
-    setTxHistory((p) => [
-      {
-        id: `tx_dep_${Date.now()}`,
-        timestamp: Date.now(),
-        fromAsset: `${asset} (Wallet)`,
-        toAsset: `${selectedStrategy.name} (Vault)`,
-        amountUsdc,
-        txSignature: txSig,
-        reason: `Deposited $${amountUsdc.toFixed(2)} from wallet into ${selectedStrategy.name} vault`,
-      },
-      ...p,
-    ]);
+
+    if (destination === 'reserve') {
+      setVaultCashReserveUsdc((c) => c + amountUsdc);
+      setTxHistory((p) => [
+        {
+          id: `tx_dep_${Date.now()}`,
+          timestamp: Date.now(),
+          fromAsset: `${asset} (Wallet)`,
+          toAsset: '1️⃣ Vault Cash Reserve (USDC)',
+          amountUsdc,
+          txSignature: txSig,
+          reason: `Deposited $${amountUsdc.toFixed(2)} into 0-risk Vault Cash Reserve`,
+        },
+        ...p,
+      ]);
+    } else {
+      const updated = selectedStrategy.tokens.map((t) => {
+        const stock = SUPPORTED_STOCKS[t.symbol];
+        const price = livePrices[t.symbol] || stock.price;
+        const existing = holdings.find((h) => h.symbol === t.symbol);
+        const existingShares = existing ? existing.shares : 0;
+        const alloc = amountUsdc * t.targetWeight;
+        const newShares = existingShares + alloc / price;
+        return {
+          symbol: t.symbol,
+          name: stock.name,
+          shares: newShares,
+          currentPrice: price,
+          currentValue: newShares * price,
+          targetWeight: t.targetWeight,
+          currentWeight: t.targetWeight,
+          driftPercent: 0,
+          change24h: stock.change24h,
+        };
+      });
+      setHoldings(updated);
+      setTxHistory((p) => [
+        {
+          id: `tx_dep_${Date.now()}`,
+          timestamp: Date.now(),
+          fromAsset: `${asset} (Wallet)`,
+          toAsset: `2️⃣ ${selectedStrategy.name}`,
+          amountUsdc,
+          txSignature: txSig,
+          reason: `Deposited & deployed $${amountUsdc.toFixed(2)} into ${selectedStrategy.name}`,
+        },
+        ...p,
+      ]);
+    }
+
     setIsDepositOpen(false);
     fetchRealBalances();
 
@@ -507,7 +625,7 @@ export default function StockPilotApp() {
           asset,
           amount: amountUsdc,
           txSignature: txSig,
-          reason: `Deposit ${asset} into ${selectedStrategy.name} on Solana Devnet`,
+          reason: `Deposit ${asset} (${destination === 'reserve' ? 'Cash Reserve' : selectedStrategy.name}) on Solana`,
         }),
       }).catch(console.warn);
     }
@@ -517,42 +635,60 @@ export default function StockPilotApp() {
   const handleWithdrawSuccess = (
     amountUsdc: number,
     asset: 'USDC' | 'SOL',
-    txSig: string
+    txSig: string,
+    source: 'reserve' | 'positions' = 'reserve'
   ) => {
     if (isDemoMode) {
       setDemoBalanceUsdc((b) => b + amountUsdc);
     }
 
-    setHoldings((prev) => {
-      const currentVaultTotal = prev.reduce((sum, h) => sum + h.currentValue, 0);
-      if (currentVaultTotal <= 0 || amountUsdc >= currentVaultTotal) {
+    if (source === 'reserve') {
+      setVaultCashReserveUsdc((c) => Math.max(0, c - amountUsdc));
+      setTxHistory((prev) => [
+        {
+          id: `tx_wdr_${Date.now()}`,
+          timestamp: Date.now(),
+          fromAsset: '1️⃣ Vault Cash Reserve (USDC)',
+          toAsset: `${asset} (Wallet)`,
+          amountUsdc,
+          txSignature: txSig,
+          reason: `Withdrew $${amountUsdc.toFixed(2)} from Cash Reserve back to wallet`,
+        },
+        ...prev,
+      ]);
+    } else {
+      setHoldings((prev) => {
+        const currentVaultTotal = prev.reduce((sum, h) => sum + h.currentValue, 0);
+        if (currentVaultTotal <= 0 || amountUsdc >= currentVaultTotal) {
+          return prev.map((h) => ({
+            ...h,
+            shares: 0,
+            currentValue: 0,
+            currentWeight: 0,
+          }));
+        }
+        const remainRatio = Math.max(0, (currentVaultTotal - amountUsdc) / currentVaultTotal);
         return prev.map((h) => ({
           ...h,
-          shares: 0,
-          currentValue: 0,
-          currentWeight: 0,
+          shares: h.shares * remainRatio,
+          currentValue: h.currentValue * remainRatio,
         }));
-      }
-      const remainRatio = Math.max(0, (currentVaultTotal - amountUsdc) / currentVaultTotal);
-      return prev.map((h) => ({
-        ...h,
-        shares: h.shares * remainRatio,
-        currentValue: h.currentValue * remainRatio,
-      }));
-    });
+      });
 
-    setTxHistory((prev) => [
-      {
-        id: `tx_wdr_${Date.now()}`,
-        timestamp: Date.now(),
-        fromAsset: `${selectedStrategy.name} (Vault)`,
-        toAsset: `${asset} (Wallet)`,
-        amountUsdc,
-        txSignature: txSig,
-        reason: `Withdrew $${amountUsdc.toFixed(2)} from vault back to wallet`,
-      },
-      ...prev,
-    ]);
+      setTxHistory((prev) => [
+        {
+          id: `tx_wdr_${Date.now()}`,
+          timestamp: Date.now(),
+          fromAsset: `2️⃣ ${selectedStrategy.name}`,
+          toAsset: `${asset} (Wallet)`,
+          amountUsdc,
+          txSignature: txSig,
+          reason: `Liquidated $${amountUsdc.toFixed(2)} active positions to wallet`,
+        },
+        ...prev,
+      ]);
+    }
+
     setIsWithdrawOpen(false);
     fetchRealBalances();
 
@@ -979,20 +1115,130 @@ export default function StockPilotApp() {
                       <span className="truncate">Rebalance</span>
                     </button>
 
-                    <button
-                      onClick={() => setIsShareModalOpen(true)}
-                      className={`flex items-center justify-center gap-1 rounded-xl py-2 px-1 text-[10px] sm:text-xs font-semibold transition cursor-pointer min-w-0 ${
-                        isLight
-                          ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                          : 'bg-white/5 hover:bg-white/10 text-slate-200'
-                      }`}
-                    >
-                      <FontAwesomeIcon icon={faShareNodes} className="w-2.5 h-2.5 text-sky-400 shrink-0" />
-                      <span className="truncate">Share</span>
-                    </button>
                   </div>
                 </div>
               </div>
+
+                {/* 2-Layer Vault Architecture Breakdown (Layer 1 Cash Reserve vs Layer 2 Active Strategy) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
+                  {/* Layer 1: Vault Cash Reserve */}
+                  <div
+                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-colors ${
+                      isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold flex items-center gap-1.5 text-emerald-400">
+                          <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
+                          <span>1️⃣ Vault Cash Reserve</span>
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
+                          0% Risk • PDA
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1.5">
+                        <span className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                          ${vaultCashReserveUsdc.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-slate-400">USDC</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 font-sans leading-tight">
+                        Idle stable liquidity in private PDA. Deploy into equities with 1 tap.
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/5 flex gap-2">
+                      <button
+                        onClick={() => setIsDeployModalOpen(true)}
+                        disabled={vaultCashReserveUsdc <= 0}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                          vaultCashReserveUsdc > 0
+                            ? isLight
+                              ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-sm'
+                              : 'bg-gradient-to-r from-amber-400 to-[#00D2FF] text-[#06080F] font-extrabold shadow-md shadow-amber-500/20 hover:brightness-110'
+                            : isLight
+                            ? 'bg-slate-100 text-slate-400'
+                            : 'bg-white/5 text-slate-500'
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={faBolt} className="w-3 h-3" />
+                        <span>1-Tap Deploy</span>
+                      </button>
+                      <button
+                        onClick={() => setIsDepositOpen(true)}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                          isLight
+                            ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                        }`}
+                      >
+                        + Add Cash
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Layer 2: Active Strategy Basket */}
+                  <div
+                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-colors ${
+                      isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-bold flex items-center gap-1.5 text-[#00D2FF]">
+                          <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" />
+                          <span>2️⃣ Active Basket</span>
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-bold border border-sky-500/30 truncate max-w-[120px]">
+                          {selectedStrategy.name}
+                        </span>
+                      </div>
+                      <div className="mt-2 flex items-baseline gap-1.5">
+                        <span className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                          ${activePositionsValue.toFixed(2)}
+                        </span>
+                        <span className="text-[10px] text-slate-400">USDC</span>
+                      </div>
+                      <p className="text-[11px] text-slate-400 mt-1 font-sans leading-tight">
+                        {computedHoldings.filter((h) => h.shares > 0).length > 0
+                          ? `${computedHoldings.filter((h) => h.shares > 0).length} active tokenized US equities with autonomous Pyth drift rebalancing.`
+                          : 'No active equity exposure yet. Deploy cash to activate.'}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/5 flex gap-2">
+                      <button
+                        onClick={() => setIsRebalanceModalOpen(true)}
+                        disabled={activePositionsValue <= 0}
+                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                          driftAnalysis.hasDrift
+                            ? isLight
+                              ? 'bg-sky-600 text-white'
+                              : 'bg-[#00D2FF] text-[#06080F] animate-pulse'
+                            : isLight
+                            ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                            : 'bg-white/10 hover:bg-white/15 text-slate-200'
+                        }`}
+                      >
+                        <FontAwesomeIcon icon={faArrowsRotate} className="w-3 h-3" />
+                        <span>{driftAnalysis.hasDrift ? 'Fix Drift' : 'Rebalance'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleUnwindToReserve()}
+                        disabled={activePositionsValue <= 0}
+                        className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed ${
+                          isLight
+                            ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                        }`}
+                        title="Sell active equities back into 0-risk Vault Cash Reserve"
+                      >
+                        De-Risk
+                      </button>
+                    </div>
+                  </div>
+                </div>
 
                 {/* Visual Asset Allocation Bar */}
                 <div
@@ -1814,6 +2060,65 @@ export default function StockPilotApp() {
                 </div>
               </div>
             ) : null}
+
+            {/* Deterministic 2-Layer Vault Architecture Module */}
+            <div
+              className={`rounded-2xl border p-4 space-y-3 font-mono transition-colors ${
+                isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#00D2FF] flex items-center gap-1.5">
+                  <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
+                  2-Layer Non-Custodial Architecture
+                </span>
+                <span className="text-[9px] px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 font-semibold uppercase">
+                  Institutional Primitive
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                {/* Layer 1 Box */}
+                <div
+                  className={`p-3 rounded-xl border space-y-1.5 ${
+                    isLight ? 'bg-emerald-50/50 border-emerald-200' : 'bg-emerald-500/5 border-emerald-500/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-400 text-[11px]">1️⃣ Vault Cash Reserve</span>
+                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded">
+                      0% Risk
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-sans leading-tight">
+                    Idle USDC stored deterministically in user PDA. Instant 1-tap deployment or withdrawal anytime.
+                  </div>
+                  <div className="text-[11px] font-bold text-white pt-1">
+                    Reserve Balance: ${vaultCashReserveUsdc.toFixed(2)} USDC
+                  </div>
+                </div>
+
+                {/* Layer 2 Box */}
+                <div
+                  className={`p-3 rounded-xl border space-y-1.5 ${
+                    isLight ? 'bg-sky-50/50 border-sky-200' : 'bg-sky-500/5 border-sky-500/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#00D2FF] text-[11px]">2️⃣ Active Strategy Baskets</span>
+                    <span className="text-[9px] font-bold text-sky-400 bg-sky-500/20 px-1.5 py-0.2 rounded">
+                      Equities
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 font-sans leading-tight">
+                    AI-synthesized tokenized equities (xNVDA, xAAPL, xMSFT) with sub-second autonomous Pyth drift correction.
+                  </div>
+                  <div className="text-[11px] font-bold text-white pt-1">
+                    Active Capital: ${activePositionsValue.toFixed(2)} USDC
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div
               className={`rounded-2xl border p-4 space-y-2.5 text-xs font-mono transition-colors ${
@@ -2970,6 +3275,8 @@ export default function StockPilotApp() {
         onClose={() => setIsWithdrawOpen(false)}
         theme={theme}
         portfolioValueUsdc={totalValueUsdc}
+        vaultCashReserveUsdc={vaultCashReserveUsdc}
+        activePositionsUsdc={activePositionsValue}
         realSolBalance={realSolBalance}
         realUsdcBalance={realUsdcBalance}
         realVaultBalance={realVaultBalance}
@@ -2978,6 +3285,16 @@ export default function StockPilotApp() {
         connected={connected}
         publicKey={publicKey}
         onWithdrawSuccess={handleWithdrawSuccess}
+      />
+
+      {/* 1-Tap Deploy Modal (Layer 1 Cash Reserve -> Layer 2 Strategy Basket) */}
+      <DeployModal
+        isOpen={isDeployModalOpen}
+        onClose={() => setIsDeployModalOpen(false)}
+        theme={theme}
+        vaultCashReserveUsdc={vaultCashReserveUsdc}
+        selectedStrategy={selectedStrategy}
+        onDeploySuccess={handleDeployCashReserve}
       />
 
       {/* Real On-Chain Deposit Modal */}

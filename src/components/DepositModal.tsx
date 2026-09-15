@@ -10,6 +10,9 @@ import {
   faExternalLink,
   faTriangleExclamation,
   faChartPie,
+  faVault,
+  faBolt,
+  faShieldHalved,
 } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
 import { PublicKey } from '@solana/web3.js';
@@ -36,7 +39,12 @@ interface DepositModalProps {
   demoBalanceUsdc?: number;
   connected: boolean;
   publicKey: PublicKey | null;
-  onDepositSuccess: (amountUsdc: number, asset: 'USDC' | 'SOL', txSig: string) => void;
+  onDepositSuccess: (
+    amountUsdc: number,
+    asset: 'USDC' | 'SOL',
+    txSig: string,
+    destination: 'reserve' | 'strategy'
+  ) => void;
 }
 
 export default function DepositModal({
@@ -59,8 +67,9 @@ export default function DepositModal({
   const { publicKey: walletPublicKey, sendTransaction } = useWallet();
   const activePublicKey = propPublicKey || walletPublicKey;
 
+  const [depositDestination, setDepositDestination] = useState<'reserve' | 'strategy'>('reserve');
   const [depositAsset, setDepositAsset] = useState<'USDC' | 'SOL'>('USDC');
-  const [amountInput, setAmountInput] = useState('100');
+  const [amountInput, setAmountInput] = useState('500');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
@@ -142,12 +151,12 @@ export default function DepositModal({
           // Ignore
         }
 
-        onDepositSuccess(amountUsdcEquivalent, depositAsset, sig);
+        onDepositSuccess(amountUsdcEquivalent, depositAsset, sig, depositDestination);
         return;
       }
 
       // Fallback to simulated demo deposit
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 1000));
       const simulatedSig = Array.from({ length: 44 }, () =>
         '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
           Math.floor(Math.random() * 58)
@@ -169,7 +178,7 @@ export default function DepositModal({
         // Ignore
       }
 
-      onDepositSuccess(amountUsdcEquivalent, depositAsset, simulatedSig);
+      onDepositSuccess(amountUsdcEquivalent, depositAsset, simulatedSig, depositDestination);
     } catch (err: any) {
       console.error('Deposit error:', err);
       setIsSubmitting(false);
@@ -213,7 +222,10 @@ export default function DepositModal({
                   isLight ? 'text-slate-500' : 'text-slate-400'
                 }`}
               >
-                {amountInput} {depositAsset} allocated to {strategyName} on-chain
+                {amountInput} {depositAsset} deposited into{' '}
+                <span className="font-semibold text-[#00D2FF]">
+                  {depositDestination === 'reserve' ? '1️⃣ Vault Cash Reserve (USDC)' : `2️⃣ ${strategyName}`}
+                </span>
               </p>
             </div>
             <div
@@ -260,20 +272,20 @@ export default function DepositModal({
             </button>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             <div>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 text-xs">
                   <FontAwesomeIcon icon={faArrowDown} className="w-3.5 h-3.5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold">Deposit Funds</h3>
+                  <h3 className="text-base font-bold">Deposit to Vault</h3>
                   <p
                     className={`text-[11px] ${
                       isLight ? 'text-slate-500' : 'text-slate-400'
                     }`}
                   >
-                    Deposit directly into your non-custodial portfolio vault
+                    Deterministic 2-layer Solana Anchor PDA vault
                   </p>
                 </div>
               </div>
@@ -288,6 +300,67 @@ export default function DepositModal({
                 <span className="break-all">{errorMessage}</span>
               </div>
             )}
+
+            {/* 2-Layer Vault Architecture Destination Selector */}
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                Select Vault Layer Destination
+              </label>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDepositDestination('reserve')}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
+                    depositDestination === 'reserve'
+                      ? isLight
+                        ? 'bg-sky-50 border-sky-500 text-slate-900 ring-1 ring-sky-500'
+                        : 'bg-[#00D2FF]/10 border-[#00D2FF] text-white ring-1 ring-[#00D2FF]'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-[#06080F] border-[#1E293B] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] flex items-center gap-1">
+                      <span>1️⃣ Cash Reserve</span>
+                    </span>
+                    <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold">
+                      0% Risk
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-mono leading-tight">
+                    Idle USDC in PDA. Deploy with 1 tap anytime.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDepositDestination('strategy')}
+                  className={`p-2.5 rounded-xl border text-left transition cursor-pointer relative ${
+                    depositDestination === 'strategy'
+                      ? isLight
+                        ? 'bg-sky-50 border-sky-500 text-slate-900 ring-1 ring-sky-500'
+                        : 'bg-[#00D2FF]/10 border-[#00D2FF] text-white ring-1 ring-[#00D2FF]'
+                      : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                      : 'bg-[#06080F] border-[#1E293B] text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[11px] flex items-center gap-1">
+                      <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5 text-amber-400" />
+                      <span>2️⃣ Instant Deploy</span>
+                    </span>
+                    <span className="text-[9px] px-1 rounded bg-sky-500/20 text-sky-400 font-mono font-semibold">
+                      Equities
+                    </span>
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-1 font-mono leading-tight">
+                    Auto-allocated to {strategyName}.
+                  </div>
+                </button>
+              </div>
+            </div>
 
             {/* Asset Selector */}
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/20 border border-white/5 text-xs font-mono">
@@ -326,7 +399,7 @@ export default function DepositModal({
               }`}
             >
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span>Wallet Balance Available:</span>
+                <span>Wallet Available:</span>
                 <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
                   {depositAsset === 'USDC'
                     ? `$${availableBalance.toFixed(2)}`
@@ -334,29 +407,28 @@ export default function DepositModal({
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 text-[10px]">
-                <span>Strategy Target:</span>
-                <span className="text-[#00D2FF] font-semibold">{strategyName}</span>
+                <span>Destination:</span>
+                <span className="text-[#00D2FF] font-semibold">
+                  {depositDestination === 'reserve' ? 'Layer 1: Vault Cash Reserve (USDC)' : `Layer 2: ${strategyName}`}
+                </span>
               </div>
             </div>
 
             {/* Amount Input */}
-            <div className="space-y-1.5">
-              <label className="block text-[11px] font-mono text-slate-400">
-                Deposit Amount ({depositAsset})
-              </label>
+            <div className="space-y-1">
               <div className="relative">
                 <input
                   type="number"
                   value={amountInput}
                   onChange={(e) => setAmountInput(e.target.value)}
-                  className={`w-full rounded-xl border p-3 font-mono text-sm focus:outline-none transition ${
+                  className={`w-full rounded-xl border p-2.5 font-mono text-sm focus:outline-none transition ${
                     isLight
                       ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-sky-500'
                       : 'bg-[#06080F] border-[#1E293B] text-white focus:border-[#00D2FF]'
                   }`}
-                  placeholder="10"
+                  placeholder="100"
                 />
-                <span className="absolute right-3 top-3 text-xs font-mono text-slate-400">
+                <span className="absolute right-3 top-2.5 text-xs font-mono text-slate-400">
                   {depositAsset}
                 </span>
               </div>
@@ -380,23 +452,38 @@ export default function DepositModal({
               ))}
             </div>
 
-            {/* Automatic Basket Allocation Preview */}
-            <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 space-y-1 text-[11px] font-mono">
-              <div className="flex items-center gap-1 text-slate-400 text-[10px] mb-1">
-                <FontAwesomeIcon icon={faChartPie} className="w-2.5 h-2.5 text-[#00D2FF]" />
-                <span>Auto-Allocated To:</span>
+            {/* Dynamic Destination Allocation Preview */}
+            {depositDestination === 'strategy' ? (
+              <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 space-y-1 text-[11px] font-mono">
+                <div className="flex items-center gap-1 text-slate-400 text-[10px] mb-1">
+                  <FontAwesomeIcon icon={faChartPie} className="w-2.5 h-2.5 text-[#00D2FF]" />
+                  <span>Auto-Allocated To {strategyName}:</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1 text-[10px]">
+                  {holdings.slice(0, 4).map((h) => (
+                    <div key={h.symbol} className="flex justify-between text-slate-300">
+                      <span>{h.symbol}:</span>
+                      <span className="text-[#00D2FF]">
+                        {(h.targetWeight * 100).toFixed(0)}% (${(amountUsdcEquivalent * h.targetWeight).toFixed(2)})
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-1 text-[10px]">
-                {holdings.slice(0, 4).map((h) => (
-                  <div key={h.symbol} className="flex justify-between text-slate-300">
-                    <span>{h.symbol}:</span>
-                    <span className="text-[#00D2FF]">
-                      {(h.targetWeight * 100).toFixed(0)}% (${(amountUsdcEquivalent * h.targetWeight).toFixed(2)})
-                    </span>
-                  </div>
-                ))}
+            ) : (
+              <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-1 text-[11px] font-mono">
+                <div className="flex items-center justify-between text-emerald-400 text-[10px]">
+                  <span className="flex items-center gap-1">
+                    <FontAwesomeIcon icon={faShieldHalved} className="w-2.5 h-2.5" />
+                    <span>0-Risk Vault Reserve</span>
+                  </span>
+                  <span className="font-bold">Layer 1</span>
+                </div>
+                <div className="text-[10px] text-slate-400 leading-tight">
+                  Funds will sit securely as idle USDC in your PDA. You can deploy into tokenized stocks anytime with 1 tap.
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Protocol Fee Transparency (Anchor CPI Split) */}
             <div
@@ -436,7 +523,9 @@ export default function DepositModal({
               <span>
                 {isSubmitting
                   ? 'Processing On-Chain...'
-                  : `Deposit ${amountInput} ${depositAsset}`}
+                  : depositDestination === 'reserve'
+                  ? `Deposit $${amountUsdcEquivalent.toFixed(2)} to Cash Reserve`
+                  : `Deposit & Deploy $${amountUsdcEquivalent.toFixed(2)} to Basket`}
               </span>
             </button>
           </div>
