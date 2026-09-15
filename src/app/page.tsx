@@ -364,7 +364,7 @@ export default function StockPilotApp() {
     setSelectedStrategy(strat);
     const updated = strat.tokens.map((t) => {
       const stock = SUPPORTED_STOCKS[t.symbol];
-      const targetVal = totalValueUsdc * t.targetWeight;
+      const targetVal = activePositionsValue * t.targetWeight;
       const currentShares = targetVal / (livePrices[t.symbol] || stock.price);
       return {
         symbol: t.symbol,
@@ -3188,7 +3188,7 @@ export default function StockPilotApp() {
         isOpen={isRebalanceModalOpen}
         onClose={() => setIsRebalanceModalOpen(false)}
         holdings={computedHoldings}
-        totalValueUsdc={totalValueUsdc}
+        totalValueUsdc={activePositionsValue}
         onConfirmRebalance={handleConfirmRebalance}
         theme={theme}
         publicKey={publicKey}
