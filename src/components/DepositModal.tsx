@@ -85,6 +85,17 @@ export default function DepositModal({
     setAmountInput(depositAsset === 'USDC' ? val.toFixed(2) : val.toFixed(4));
   };
 
+  const handleToggleAsset = (asset: 'USDC' | 'SOL') => {
+    setDepositAsset(asset);
+    if (asset === 'SOL') {
+      const bal = realSolBalance ?? 0;
+      setAmountInput(bal > 0 ? Math.max(0.01, (bal * 0.5)).toFixed(3) : '0.05');
+    } else {
+      const bal = realUsdcBalance ?? 0;
+      setAmountInput(bal > 0 ? Math.min(100, bal).toFixed(2) : '50');
+    }
+  };
+
   const handleExecuteDeposit = async () => {
     if (parsedAmount <= 0) {
       setErrorMessage('Please enter a valid deposit amount.');
@@ -355,7 +366,7 @@ export default function DepositModal({
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/20 border border-white/5 text-xs font-mono">
               <button
                 type="button"
-                onClick={() => setDepositAsset('USDC')}
+                onClick={() => handleToggleAsset('USDC')}
                 className={`py-1.5 rounded-lg font-bold transition cursor-pointer ${
                   depositAsset === 'USDC'
                     ? isLight
@@ -368,7 +379,7 @@ export default function DepositModal({
               </button>
               <button
                 type="button"
-                onClick={() => setDepositAsset('SOL')}
+                onClick={() => handleToggleAsset('SOL')}
                 className={`py-1.5 rounded-lg font-bold transition cursor-pointer ${
                   depositAsset === 'SOL'
                     ? isLight

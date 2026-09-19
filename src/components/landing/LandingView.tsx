@@ -17,7 +17,7 @@ import StockPilotLogo from '@/components/StockPilotLogo';
 interface LandingViewProps {
   theme: 'dark' | 'light';
   campaignPhrase: string;
-  onLaunchApp: (options?: { isDemo?: boolean }) => void;
+  onLaunchApp: () => void;
   renderMockupContent: () => React.ReactNode;
 }
 
@@ -92,14 +92,15 @@ export default function LandingView({
                 </button>
 
                 <button
-                  onClick={() => onLaunchApp({ isDemo: true })}
+                  onClick={() => onLaunchApp()}
                   className={`flex items-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-semibold transition cursor-pointer ${
                     isLight
                       ? 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
                       : 'border-[#1E293B] bg-[#0C121E] hover:bg-[#121B2B] text-slate-200'
                   }`}
                 >
-                  <span>Try Demo Portfolio ($10K)</span>
+                  <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Explore Devnet Vault</span>
                 </button>
               </div>
 
