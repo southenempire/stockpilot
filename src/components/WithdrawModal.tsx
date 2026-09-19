@@ -221,7 +221,7 @@ export default function WithdrawModal({
               >
                 {amountInput} {withdrawAsset} returned to your wallet from{' '}
                 <span className="font-semibold text-[#00D2FF]">
-                  {withdrawSource === 'reserve' ? '1️⃣ Vault Cash Reserve' : '2️⃣ Active Strategy Positions'}
+                  {withdrawSource === 'reserve' ? 'Layer 1: Vault Cash Reserve' : 'Layer 2: Active Strategy Positions'}
                 </span>
               </p>
             </div>
@@ -318,7 +318,12 @@ export default function WithdrawModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px]">1️⃣ Cash Reserve</span>
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                        L1
+                      </span>
+                      <span>Cash Reserve</span>
+                    </span>
                   </div>
                   <div className="text-[10px] text-emerald-400 font-mono mt-1 font-bold">
                     ${vaultCashReserveUsdc.toFixed(2)} USDC
@@ -339,7 +344,12 @@ export default function WithdrawModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px]">2️⃣ Active Basket</span>
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
+                        L2
+                      </span>
+                      <span>Active Basket</span>
+                    </span>
                   </div>
                   <div className="text-[10px] text-sky-400 font-mono mt-1 font-bold">
                     ${activePositionsUsdc.toFixed(2)} USDC
@@ -395,7 +405,7 @@ export default function WithdrawModal({
               <div className="flex justify-between text-slate-500 text-[10px]">
                 <span>Source:</span>
                 <span className="text-[#00D2FF] font-semibold">
-                  {withdrawSource === 'reserve' ? '1️⃣ Vault Cash Reserve (USDC)' : '2️⃣ Active Strategy Basket'}
+                  {withdrawSource === 'reserve' ? 'Layer 1: Vault Cash Reserve (USDC)' : 'Layer 2: Active Strategy Basket'}
                 </span>
               </div>
             </div>

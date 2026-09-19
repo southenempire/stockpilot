@@ -218,7 +218,7 @@ export default function DepositModal({
               >
                 {amountInput} {depositAsset} deposited into{' '}
                 <span className="font-semibold text-[#00D2FF]">
-                  {depositDestination === 'reserve' ? '1️⃣ Vault Cash Reserve (USDC)' : `2️⃣ ${strategyName}`}
+                  {depositDestination === 'reserve' ? 'Layer 1: Vault Cash Reserve (USDC)' : `Layer 2: ${strategyName}`}
                 </span>
               </p>
             </div>
@@ -315,8 +315,11 @@ export default function DepositModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px] flex items-center gap-1">
-                      <span>1️⃣ Cash Reserve</span>
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                        L1
+                      </span>
+                      <span>Cash Reserve</span>
                     </span>
                     <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold">
                       0% Risk
@@ -341,9 +344,11 @@ export default function DepositModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px] flex items-center gap-1">
-                      <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5 text-amber-400" />
-                      <span>2️⃣ Instant Deploy</span>
+                    <span className="font-bold text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
+                        L2
+                      </span>
+                      <span>Instant Deploy</span>
                     </span>
                     <span className="text-[9px] px-1 rounded bg-sky-500/20 text-sky-400 font-mono font-semibold">
                       Equities
@@ -467,11 +472,13 @@ export default function DepositModal({
             ) : (
               <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 space-y-1 text-[11px] font-mono">
                 <div className="flex items-center justify-between text-emerald-400 text-[10px]">
-                  <span className="flex items-center gap-1">
-                    <FontAwesomeIcon icon={faShieldHalved} className="w-2.5 h-2.5" />
-                    <span>0-Risk Vault Reserve</span>
+                  <span className="flex items-center gap-1.5 font-bold">
+                    <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3" />
+                    <span>Vault Principal Reserve</span>
                   </span>
-                  <span className="font-bold">Layer 1</span>
+                  <span className="font-bold text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono">
+                    Layer 1 • 0% Risk
+                  </span>
                 </div>
                 <div className="text-[10px] text-slate-400 leading-tight">
                   Funds will sit securely as idle USDC in your PDA. You can deploy into tokenized stocks anytime with 1 tap.

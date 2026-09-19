@@ -265,9 +265,12 @@ export default function DeployModal({
               }`}
             >
               <div className="flex justify-between text-slate-400 text-[11px]">
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
                   <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3" />
-                  <span>1️⃣ Vault Cash Reserve:</span>
+                  <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                    L1
+                  </span>
+                  <span>Vault Cash Reserve:</span>
                 </span>
                 <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold text-sm`}>
                   ${vaultCashReserveUsdc.toFixed(2)} USDC

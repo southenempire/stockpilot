@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { PortfolioHolding } from '@/types/stock';
-import { AlertTriangle, CheckCircle2, RefreshCw, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Clock, RefreshCw, Zap } from 'lucide-react';
 
 interface DriftVisualizerProps {
   holdings: PortfolioHolding[];
@@ -136,8 +136,9 @@ export default function DriftVisualizer({
       </div>
 
       {cooldownActive && (
-        <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-2.5 text-center text-xs text-zinc-400">
-          ⏱️ Timelock active: Next automated on-chain rebalance cooldown in <span className="font-mono font-bold text-white">{cooldownSeconds}s</span> (Solana Clock sysvar).
+        <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-2.5 text-center text-xs text-zinc-400 flex items-center justify-center gap-1.5 font-mono">
+          <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          <span>Timelock active: Next automated on-chain rebalance cooldown in <span className="font-mono font-bold text-white">{cooldownSeconds}s</span> (Solana Clock sysvar).</span>
         </div>
       )}
     </div>

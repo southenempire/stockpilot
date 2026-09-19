@@ -534,8 +534,8 @@ export default function StockPilotApp() {
       {
         id: `tx_deploy_${Date.now()}`,
         timestamp: Date.now(),
-        fromAsset: '1️⃣ Vault Cash Reserve (USDC)',
-        toAsset: `2️⃣ ${targetStrategy.name}`,
+        fromAsset: 'Vault Cash Reserve (USDC)',
+        toAsset: targetStrategy.name,
         amountUsdc: amountToDeploy,
         txSignature: sig,
         reason: `1-Tap Deployed $${amountToDeploy.toFixed(2)} from PDA Cash Reserve into ${targetStrategy.name}`,
@@ -572,8 +572,8 @@ export default function StockPilotApp() {
       {
         id: `tx_unwind_${Date.now()}`,
         timestamp: Date.now(),
-        fromAsset: `2️⃣ ${selectedStrategy.name}`,
-        toAsset: '1️⃣ Vault Cash Reserve (USDC)',
+        fromAsset: selectedStrategy.name,
+        toAsset: 'Vault Cash Reserve (USDC)',
         amountUsdc: unwindVal,
         txSignature: sig,
         reason: `De-risked $${unwindVal.toFixed(2)} of equities back into Vault Cash Reserve`,
@@ -597,7 +597,7 @@ export default function StockPilotApp() {
           id: `tx_dep_${Date.now()}`,
           timestamp: Date.now(),
           fromAsset: `${asset} (Wallet)`,
-          toAsset: '1️⃣ Vault Cash Reserve (USDC)',
+          toAsset: 'Vault Cash Reserve (USDC)',
           amountUsdc,
           txSignature: txSig,
           reason: `Deposited $${amountUsdc.toFixed(2)} into 0-risk Vault Cash Reserve`,
@@ -630,7 +630,7 @@ export default function StockPilotApp() {
           id: `tx_dep_${Date.now()}`,
           timestamp: Date.now(),
           fromAsset: `${asset} (Wallet)`,
-          toAsset: `2️⃣ ${selectedStrategy.name}`,
+          toAsset: selectedStrategy.name,
           amountUsdc,
           txSignature: txSig,
           reason: `Deposited & deployed $${amountUsdc.toFixed(2)} into ${selectedStrategy.name}`,
@@ -673,7 +673,7 @@ export default function StockPilotApp() {
         {
           id: `tx_wdr_${Date.now()}`,
           timestamp: Date.now(),
-          fromAsset: '1️⃣ Vault Cash Reserve (USDC)',
+          fromAsset: 'Vault Cash Reserve (USDC)',
           toAsset: `${asset} (Wallet)`,
           amountUsdc,
           txSignature: txSig,
@@ -704,7 +704,7 @@ export default function StockPilotApp() {
         {
           id: `tx_wdr_${Date.now()}`,
           timestamp: Date.now(),
-          fromAsset: `2️⃣ ${selectedStrategy.name}`,
+          fromAsset: selectedStrategy.name,
           toAsset: `${asset} (Wallet)`,
           amountUsdc,
           txSignature: txSig,
@@ -1138,7 +1138,10 @@ export default function StockPilotApp() {
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="font-bold flex items-center gap-1.5 text-emerald-400">
                           <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
-                          <span>1️⃣ Vault Cash Reserve</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                            L1
+                          </span>
+                          <span>Vault Cash Reserve</span>
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
                           0% Risk • PDA
@@ -1195,7 +1198,10 @@ export default function StockPilotApp() {
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="font-bold flex items-center gap-1.5 text-[#00D2FF]">
                           <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" />
-                          <span>2️⃣ Active Basket</span>
+                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
+                            L2
+                          </span>
+                          <span>Active Basket</span>
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-bold border border-sky-500/30 truncate max-w-[120px]">
                           {selectedStrategy.name}
@@ -1631,8 +1637,9 @@ export default function StockPilotApp() {
                   </div>
                 </div>
 
-                <div className="text-[10px] text-slate-400 leading-relaxed bg-emerald-500/5 border border-emerald-500/20 p-2 rounded-lg">
-                  🔒 Funds in this vault are strictly controlled by your wallet's programmatic PDA derivation. No third party can withdraw or reallocate without your cryptographic signature.
+                <div className="text-[10px] text-slate-400 leading-relaxed bg-emerald-500/5 border border-emerald-500/20 p-2.5 rounded-lg flex items-start gap-2">
+                  <FontAwesomeIcon icon={faLock} className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>Funds in this vault are strictly controlled by your wallet's programmatic PDA derivation. No third party can withdraw or reallocate without your cryptographic signature.</span>
                 </div>
               </div>
             ) : null}
@@ -1661,7 +1668,12 @@ export default function StockPilotApp() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-emerald-400 text-[11px]">1️⃣ Vault Cash Reserve</span>
+                    <span className="font-bold text-emerald-400 text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                        L1
+                      </span>
+                      <span>Vault Cash Reserve</span>
+                    </span>
                     <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded">
                       0% Risk
                     </span>
@@ -1681,7 +1693,12 @@ export default function StockPilotApp() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#00D2FF] text-[11px]">2️⃣ Active Strategy Baskets</span>
+                    <span className="font-bold text-[#00D2FF] text-[11px] flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
+                        L2
+                      </span>
+                      <span>Active Strategy Baskets</span>
+                    </span>
                     <span className="text-[9px] font-bold text-sky-400 bg-sky-500/20 px-1.5 py-0.2 rounded">
                       Equities
                     </span>
