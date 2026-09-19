@@ -1126,99 +1126,87 @@ export default function StockPilotApp() {
                 </div>
               </div>
 
-                {/* 2-Layer Vault Architecture Breakdown (Layer 1 Cash Reserve vs Layer 2 Active Strategy) */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-mono">
+                {/* Sleek Unified 2-Layer Vault Architecture Strip */}
+                <div
+                  className={`rounded-2xl border p-3.5 grid grid-cols-2 gap-3 font-mono transition-colors ${
+                    isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
+                  }`}
+                >
                   {/* Layer 1: Vault Cash Reserve */}
-                  <div
-                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-colors ${
-                      isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
-                    }`}
-                  >
+                  <div className="space-y-1.5 pr-3 border-r border-slate-200/50 dark:border-white/5 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold flex items-center gap-1.5 text-emerald-400">
-                          <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3" />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold flex items-center gap-1 text-emerald-400 text-[11px] truncate">
+                          <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3 shrink-0" />
                           <span>Cash Reserve</span>
                         </span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30 shrink-0">
                           0% Risk
                         </span>
                       </div>
-                      <div className="mt-2 flex items-baseline gap-1.5">
-                        <span className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      <div className="mt-1 flex items-baseline gap-1">
+                        <span className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           ${vaultCashReserveUsdc.toFixed(2)}
                         </span>
                         <span className="text-[10px] text-slate-400">USDC</span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1 font-sans leading-tight">
-                        Idle stable liquidity in private PDA. Deploy into equities with 1 tap.
-                      </p>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/5 flex gap-2">
+                    <div className="flex gap-1.5 pt-1">
                       <button
                         onClick={() => setIsDeployModalOpen(true)}
                         disabled={vaultCashReserveUsdc <= 0}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                           vaultCashReserveUsdc > 0
                             ? isLight
                               ? 'bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-sm'
-                              : 'bg-gradient-to-r from-amber-400 to-[#00D2FF] text-[#06080F] font-extrabold shadow-md shadow-amber-500/20 hover:brightness-110'
+                              : 'bg-gradient-to-r from-amber-400 to-[#00D2FF] text-[#06080F] font-extrabold shadow-sm hover:brightness-110'
                             : isLight
                             ? 'bg-slate-100 text-slate-400'
                             : 'bg-white/5 text-slate-500'
                         }`}
                       >
-                        <FontAwesomeIcon icon={faBolt} className="w-3 h-3" />
-                        <span>1-Tap Deploy</span>
+                        <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5" />
+                        <span>Deploy</span>
                       </button>
                       <button
                         onClick={() => setIsDepositOpen(true)}
-                        className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer border ${
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-semibold transition cursor-pointer border ${
                           isLight
                             ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
                             : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
                         }`}
                       >
-                        + Add Cash
+                        + Add
                       </button>
                     </div>
                   </div>
 
                   {/* Layer 2: Active Strategy Basket */}
-                  <div
-                    className={`rounded-2xl border p-4 flex flex-col justify-between transition-colors ${
-                      isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
-                    }`}
-                  >
+                  <div className="space-y-1.5 flex flex-col justify-between">
                     <div>
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold flex items-center gap-1.5 text-[#00D2FF]">
-                          <FontAwesomeIcon icon={faLayerGroup} className="w-3 h-3" />
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold flex items-center gap-1 text-[#00D2FF] text-[11px] truncate">
+                          <FontAwesomeIcon icon={faLayerGroup} className="w-3 h-3 shrink-0" />
                           <span>Active Basket</span>
                         </span>
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-bold border border-sky-500/30 truncate max-w-[120px]">
-                          {selectedStrategy.name}
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-sky-500/15 text-sky-400 font-bold border border-sky-500/30 truncate max-w-[70px] shrink-0">
+                          {selectedStrategy.tokens[0]?.symbol || 'Basket'}
                         </span>
                       </div>
-                      <div className="mt-2 flex items-baseline gap-1.5">
-                        <span className={`text-2xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                      <div className="mt-1 flex items-baseline gap-1">
+                        <span className={`text-xl font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           ${activePositionsValue.toFixed(2)}
                         </span>
                         <span className="text-[10px] text-slate-400">USDC</span>
                       </div>
-                      <p className="text-[11px] text-slate-400 mt-1 font-sans leading-tight">
-                        {computedHoldings.filter((h) => h.shares > 0).length > 0
-                          ? `${computedHoldings.filter((h) => h.shares > 0).length} active tokenized US equities with autonomous Pyth drift rebalancing.`
-                          : 'No active equity exposure yet. Deploy cash to activate.'}
-                      </p>
                     </div>
 
-                    <div className="mt-3 pt-3 border-t border-slate-200/50 dark:border-white/5 flex gap-2">
+                    <div className="flex gap-1.5 pt-1">
                       <button
                         onClick={() => setIsRebalanceModalOpen(true)}
                         disabled={activePositionsValue <= 0}
-                        className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                           driftAnalysis.hasDrift
                             ? isLight
                               ? 'bg-sky-600 text-white'
@@ -1228,18 +1216,18 @@ export default function StockPilotApp() {
                             : 'bg-white/10 hover:bg-white/15 text-slate-200'
                         }`}
                       >
-                        <FontAwesomeIcon icon={faArrowsRotate} className="w-3 h-3" />
-                        <span>{driftAnalysis.hasDrift ? 'Fix Drift' : 'Rebalance'}</span>
+                        <FontAwesomeIcon icon={faArrowsRotate} className="w-2.5 h-2.5" />
+                        <span>Rebalance</span>
                       </button>
                       <button
                         onClick={() => handleUnwindToReserve()}
                         disabled={activePositionsValue <= 0}
-                        className={`py-2 px-3 rounded-xl text-xs font-semibold transition cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed ${
+                        className={`py-1.5 px-2 rounded-lg text-[10px] font-semibold transition cursor-pointer border disabled:opacity-40 disabled:cursor-not-allowed ${
                           isLight
                             ? 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
-                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                            : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
                         }`}
-                        title="Sell active equities back into 0-risk Vault Cash Reserve"
+                        title="De-risk equities back into Cash Reserve"
                       >
                         De-Risk
                       </button>
