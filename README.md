@@ -193,6 +193,17 @@ npm run dev
 ```
 Open `http://localhost:3000` in your browser.
 
+### 4. Run Automated Test Suite
+```bash
+npm test
+```
+Executes the 8-part invariant test suite covering:
+* Deterministic PDA Vault derivation matching Anchor seeds `[b"stockpilot_vault", owner]`.
+* 15 bps deterministic protocol fee split calculation to Treasury.
+* 300-second timelock cooldown rebalance protection.
+* 2-Layer Vault accounting invariants (Total NAV = Cash Reserve + Active Strategy Baskets).
+* Autonomous drift deviation triggers and atomic multi-token swap matrix solver.
+
 ---
 
 ## Official Links

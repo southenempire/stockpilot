@@ -12,6 +12,8 @@ import {
   faChartPie,
 } from '@fortawesome/free-solid-svg-icons';
 import confetti from 'canvas-confetti';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import { buildRebalanceTransaction } from '@/lib/solana/contract-client';
 import { BasketStrategy } from '../types/stock';
 import { PREBUILT_STRATEGIES } from '../data/strategies';
 
@@ -21,7 +23,10 @@ interface DeployModalProps {
   theme?: 'dark' | 'light';
   vaultCashReserveUsdc: number;
   selectedStrategy: BasketStrategy;
-  onDeploySuccess: (amountUsdc: number, targetStrategy: BasketStrategy) => void;
+  onDeploySuccess: (amountUsdc: number, targetStrategy: BasketStrategy, txSig?: string) => void;
+  connected?: boolean;
+  publicKey?: any;
+  isDemoMode?: boolean;
 }
 
 export default function DeployModal({
@@ -31,7 +36,14 @@ export default function DeployModal({
   vaultCashReserveUsdc,
   selectedStrategy,
   onDeploySuccess,
+  connected = false,
+  publicKey = null,
+  isDemoMode = false,
 }: DeployModalProps) {
+  const { connection } = useConnection();
+  const { publicKey: walletPublicKey, sendTransaction } = useWallet();
+  const activePublicKey = publicKey || walletPublicKey;
+
   const [targetStrategy, setTargetStrategy] = useState<BasketStrategy>(selectedStrategy);
   const [amountInput, setAmountInput] = useState(() =>
     vaultCashReserveUsdc > 0 ? (vaultCashReserveUsdc >= 500 ? '500' : vaultCashReserveUsdc.toFixed(2)) : '100'
@@ -67,6 +79,48 @@ export default function DeployModal({
     setErrorMessage(null);
 
     try {
+      if (activePublicKey && !isDemoMode && sendTransaction) {
+        // Real on-chain deploy strategy execution via Anchor rebalance/allocation instruction
+        const driftBps = targetStrategy.tokens.map((t) => Math.round(t.targetWeight * 10000));
+        const tx = await buildRebalanceTransaction(
+          connection,
+          activePublicKey,
+          driftBps.length > 0 ? driftBps : [3500, 2500, 2000, 2000]
+        );
+
+        const sig = await sendTransaction(tx, connection);
+        setTxSignature(sig);
+
+        try {
+          const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash: latestBlockhash.blockhash,
+              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch {
+          // Timeout fallback - signature still broadcasts
+        }
+
+        setTxSuccess(true);
+        setIsSubmitting(false);
+
+        try {
+          confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.6 },
+            colors: ['#00D2FF', '#10B981', '#38BDF8', '#F59E0B'],
+          });
+        } catch {}
+
+        onDeploySuccess(parsedAmount, targetStrategy, sig);
+        return;
+      }
+
       await new Promise((r) => setTimeout(r, 900));
 
       const simulatedSig = Array.from({ length: 44 }, () =>
@@ -88,7 +142,7 @@ export default function DeployModal({
         });
       } catch {}
 
-      onDeploySuccess(parsedAmount, targetStrategy);
+      onDeploySuccess(parsedAmount, targetStrategy, simulatedSig);
     } catch (err: any) {
       setIsSubmitting(false);
       setErrorMessage(err?.message || 'Failed to deploy funds. Please try again.');
