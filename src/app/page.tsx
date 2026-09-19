@@ -997,13 +997,21 @@ export default function StockPilotApp() {
                     <span className="text-xs font-mono text-slate-500">Vault Net Worth</span>
                   </div>
 
-                  <div className="text-right font-mono">
-                    <div className="text-[10px] text-slate-400">Wallet USDC:</div>
-                    <div className={`text-xs font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
-                      ${(realUsdcBalance ?? 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                  <div className="text-right font-mono space-y-0.5">
+                    <div className="flex items-center justify-end gap-1.5 text-[10px] text-slate-400">
+                      <span>Devnet SOL:</span>
+                      <span className={`font-bold ${isLight ? 'text-purple-700' : 'text-purple-400'}`}>
+                        {realSolBalance !== null ? `${realSolBalance.toFixed(3)} SOL` : '0.000 SOL'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-1.5 text-[11px] text-slate-400">
+                      <span>Devnet USDC:</span>
+                      <span className={`font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                        ${(realUsdcBalance ?? 0).toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -2299,8 +2307,25 @@ export default function StockPilotApp() {
         isOpen={isFaucetOpen}
         onClose={() => setIsFaucetOpen(false)}
         walletAddress={publicKey?.toBase58()}
-        onSuccessFund={() => {
-          fetchRealBalances();
+        realSolBalance={realSolBalance}
+        realUsdcBalance={realUsdcBalance}
+        onSuccessFund={(amountUsdc, amountSol, txSig) => {
+          setRealUsdcBalance((prev) => (prev ?? 0) + amountUsdc);
+          setRealSolBalance((prev) => (prev ?? 0) + amountSol);
+          setTxHistory((prev) => [
+            {
+              id: `tx_faucet_${Date.now()}`,
+              timestamp: Date.now(),
+              fromAsset: 'Solana Devnet Faucet',
+              toAsset: 'Wallet (USDC & SOL)',
+              amountUsdc,
+              txSignature: txSig,
+              reason: `Funded ${amountSol} Devnet SOL + $${amountUsdc.toLocaleString()} Devnet USDC from Faucet`,
+            },
+            ...prev,
+          ]);
+          setTimeout(fetchRealBalances, 1500);
+          setTimeout(fetchRealBalances, 4500);
         }}
       />
     </div>

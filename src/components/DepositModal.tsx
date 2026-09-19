@@ -65,11 +65,23 @@ export default function DepositModal({
 
   const [depositDestination, setDepositDestination] = useState<'reserve' | 'strategy'>('reserve');
   const [depositAsset, setDepositAsset] = useState<'USDC' | 'SOL'>('USDC');
-  const [amountInput, setAmountInput] = useState('500');
+  const [amountInput, setAmountInput] = useState('50');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (depositAsset === 'USDC') {
+        const bal = realUsdcBalance ?? 0;
+        setAmountInput(bal > 0 ? (bal >= 100 ? '100' : bal.toString()) : '50');
+      } else {
+        const bal = realSolBalance ?? 0;
+        setAmountInput(bal > 0 ? Math.max(0.01, bal * 0.5).toFixed(3) : '0.05');
+      }
+    }
+  }, [isOpen, depositAsset, realUsdcBalance, realSolBalance]);
 
   if (!isOpen) return null;
 
