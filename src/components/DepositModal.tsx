@@ -218,7 +218,7 @@ export default function DepositModal({
               >
                 {amountInput} {depositAsset} deposited into{' '}
                 <span className="font-semibold text-[#00D2FF]">
-                  {depositDestination === 'reserve' ? 'Layer 1: Vault Cash Reserve (USDC)' : `Layer 2: ${strategyName}`}
+                  {depositDestination === 'reserve' ? 'Vault Cash Reserve (USDC)' : strategyName}
                 </span>
               </p>
             </div>
@@ -315,12 +315,7 @@ export default function DepositModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px] flex items-center gap-1.5">
-                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                        L1
-                      </span>
-                      <span>Cash Reserve</span>
-                    </span>
+                    <span className="font-bold text-[11px]">Cash Reserve</span>
                     <span className="text-[9px] px-1 rounded bg-emerald-500/20 text-emerald-400 font-mono font-semibold">
                       0% Risk
                     </span>
@@ -344,12 +339,7 @@ export default function DepositModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px] flex items-center gap-1.5">
-                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
-                        L2
-                      </span>
-                      <span>Instant Deploy</span>
-                    </span>
+                    <span className="font-bold text-[11px]">Instant Deploy</span>
                     <span className="text-[9px] px-1 rounded bg-sky-500/20 text-sky-400 font-mono font-semibold">
                       Equities
                     </span>
@@ -408,7 +398,7 @@ export default function DepositModal({
               <div className="flex justify-between text-slate-500 text-[10px]">
                 <span>Destination:</span>
                 <span className="text-[#00D2FF] font-semibold">
-                  {depositDestination === 'reserve' ? 'Layer 1: Vault Cash Reserve (USDC)' : `Layer 2: ${strategyName}`}
+                  {depositDestination === 'reserve' ? 'Vault Cash Reserve (USDC)' : strategyName}
                 </span>
               </div>
             </div>

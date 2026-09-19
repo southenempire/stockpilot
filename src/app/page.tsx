@@ -1137,14 +1137,11 @@ export default function StockPilotApp() {
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="font-bold flex items-center gap-1.5 text-emerald-400">
-                          <FontAwesomeIcon icon={faShieldHalved} className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                            L1
-                          </span>
-                          <span>Vault Cash Reserve</span>
+                          <FontAwesomeIcon icon={faShieldHalved} className="w-3 h-3" />
+                          <span>Cash Reserve</span>
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30">
-                          0% Risk • PDA
+                          0% Risk
                         </span>
                       </div>
                       <div className="mt-2 flex items-baseline gap-1.5">
@@ -1197,10 +1194,7 @@ export default function StockPilotApp() {
                     <div>
                       <div className="flex items-center justify-between text-xs mb-1">
                         <span className="font-bold flex items-center gap-1.5 text-[#00D2FF]">
-                          <FontAwesomeIcon icon={faLayerGroup} className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
-                            L2
-                          </span>
+                          <FontAwesomeIcon icon={faLayerGroup} className="w-3 h-3" />
                           <span>Active Basket</span>
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 font-bold border border-sky-500/30 truncate max-w-[120px]">
@@ -1668,12 +1662,7 @@ export default function StockPilotApp() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-emerald-400 text-[11px] flex items-center gap-1.5">
-                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                        L1
-                      </span>
-                      <span>Vault Cash Reserve</span>
-                    </span>
+                    <span className="font-bold text-emerald-400 text-[11px]">Vault Cash Reserve</span>
                     <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/20 px-1.5 py-0.2 rounded">
                       0% Risk
                     </span>
@@ -1693,12 +1682,7 @@ export default function StockPilotApp() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#00D2FF] text-[11px] flex items-center gap-1.5">
-                      <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-sky-500/20 text-[#00D2FF] font-bold border border-sky-500/30">
-                        L2
-                      </span>
-                      <span>Active Strategy Baskets</span>
-                    </span>
+                    <span className="font-bold text-[#00D2FF] text-[11px]">Active Strategy Baskets</span>
                     <span className="text-[9px] font-bold text-sky-400 bg-sky-500/20 px-1.5 py-0.2 rounded">
                       Equities
                     </span>
