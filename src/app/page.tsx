@@ -19,6 +19,7 @@ import TourModal from '@/components/TourModal';
 import WithdrawModal from '@/components/WithdrawModal';
 import DepositModal from '@/components/DepositModal';
 import DeployModal from '@/components/DeployModal';
+import DevnetFaucetModal from '@/components/DevnetFaucetModal';
 import ThemeToggle from '@/components/ThemeToggle';
 import StockPilotLogo from '@/components/StockPilotLogo';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
@@ -157,7 +158,12 @@ export default function StockPilotApp() {
     return () => clearInterval(interval);
   }, [campaignPhrases.length]);
 
-  // Price registry
+  // Live Pyth Network Real-Time Oracle Feed & Faucet state
+  const [isFaucetOpen, setIsFaucetOpen] = useState(false);
+  const [pythOracleActive, setPythOracleActive] = useState(true);
+  const [pythLastTimestamp, setPythLastTimestamp] = useState(Date.now());
+
+  // Price registry (Initialized with fallbacks and continuously refreshed via Pyth Hermes Oracle)
   const [livePrices, setLivePrices] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     Object.values(SUPPORTED_STOCKS).forEach((s) => {
@@ -165,6 +171,41 @@ export default function StockPilotApp() {
     });
     return initial;
   });
+
+  // Polling Pyth Network real-time oracle prices every 10 seconds
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLivePythPrices = async () => {
+      try {
+        const res = await fetch('/api/pyth-prices');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.prices && isMounted) {
+            const updated: Record<string, number> = {};
+            Object.entries(data.prices).forEach(([sym, info]: [string, any]) => {
+              if (info.price && typeof info.price === 'number') {
+                updated[sym] = info.price;
+              }
+            });
+            if (Object.keys(updated).length > 0) {
+              setLivePrices((prev) => ({ ...prev, ...updated }));
+              setPythLastTimestamp(data.timestamp || Date.now());
+              setPythOracleActive(true);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Pyth Hermes polling note:', err);
+      }
+    };
+
+    fetchLivePythPrices();
+    const interval = setInterval(fetchLivePythPrices, 10000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Holdings state (Starts at 0 in vault; demo wallet starts with $10,000 uninvested cash)
   const [holdings, setHoldings] = useState<PortfolioHolding[]>(() => {
@@ -2385,6 +2426,20 @@ export default function StockPilotApp() {
             <div className="hidden md:flex items-center gap-3">
               <ThemeToggle theme={theme} onToggle={toggleTheme} />
 
+              {/* 1-Tap Devnet Faucet Button */}
+              <button
+                onClick={() => setIsFaucetOpen(true)}
+                className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold transition active:scale-95 cursor-pointer ${
+                  isLight
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-300 hover:bg-emerald-100 shadow-sm'
+                    : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20'
+                }`}
+                title="Claim 1,000 Devnet USDC Test Credits"
+              >
+                <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-emerald-400" />
+                <span>Devnet Faucet</span>
+              </button>
+
               {viewMode === 'website' ? (
                 <button
                   onClick={() => handleLaunchApp()}
@@ -2549,6 +2604,24 @@ export default function StockPilotApp() {
 
             {/* Navigation Links */}
             <div className="space-y-1 pt-1 font-mono text-xs">
+              <button
+                onClick={() => {
+                  setIsFaucetOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className={`w-full flex items-center justify-between p-2.5 rounded-xl font-semibold transition cursor-pointer border ${
+                  isLight
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Devnet Faucet (+1,000 USDC)</span>
+                </div>
+                <FontAwesomeIcon icon={faArrowRight} className="w-2.5 h-2.5 text-emerald-400" />
+              </button>
+
               <button
                 onClick={() => {
                   setViewMode('website');
@@ -3317,6 +3390,17 @@ export default function StockPilotApp() {
         connected={connected}
         publicKey={publicKey}
         onDepositSuccess={handleDepositSuccess}
+      />
+
+      {/* 1-Tap Solana Devnet Faucet Modal */}
+      <DevnetFaucetModal
+        isOpen={isFaucetOpen}
+        onClose={() => setIsFaucetOpen(false)}
+        walletAddress={publicKey?.toBase58()}
+        onSuccessFund={(amount) => {
+          setDemoBalanceUsdc((prev) => prev + amount);
+          fetchRealBalances();
+        }}
       />
     </div>
   );

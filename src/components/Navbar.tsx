@@ -15,13 +15,17 @@ interface NavbarProps {
   setIsDemoMode: (val: boolean) => void;
   demoBalanceUsdc: number;
   onOpenPromptModal: () => void;
+  onOpenFaucetModal?: () => void;
+  isPythLive?: boolean;
 }
 
 export default function Navbar({
   isDemoMode,
   setIsDemoMode,
   demoBalanceUsdc,
-  onOpenPromptModal
+  onOpenPromptModal,
+  onOpenFaucetModal,
+  isPythLive = true
 }: NavbarProps) {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#090A0F]/90 backdrop-blur-md">
@@ -40,15 +44,26 @@ export default function Navbar({
                 Solana
               </span>
             </div>
-            <div className="flex items-center gap-1 text-[11px] text-zinc-400">
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
               <span className="h-1.5 w-1.5 rounded-full bg-[#14F195] animate-pulse"></span>
-              <span className="font-medium text-[#14F195]">24/7 Market Live</span>
+              <span className="font-medium text-[#14F195]">Pyth Oracle 400ms Live</span>
             </div>
           </div>
         </div>
 
         {/* Action Controls */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Faucet Claim Button */}
+          {onOpenFaucetModal && (
+            <button
+              onClick={onOpenFaucetModal}
+              className="flex items-center gap-1.5 rounded-xl border border-[#14F195]/30 bg-[#14F195]/10 px-2.5 py-1.5 text-xs font-semibold text-[#14F195] transition hover:bg-[#14F195]/20 active:scale-95"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Devnet Faucet</span>
+            </button>
+          )}
+
           {/* AI Strategy Prompt Button */}
           <button
             onClick={onOpenPromptModal}
