@@ -86,21 +86,9 @@ export default function LandingView({
                       : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
                   }`}
                 >
-                  <FontAwesomeIcon icon={faMobileScreen} className="w-4 h-4" />
-                  <span>Launch Mobile App</span>
+                  <FontAwesomeIcon icon={faBolt} className="w-4 h-4" />
+                  <span>Launch App</span>
                   <FontAwesomeIcon icon={faArrowRight} className="w-3.5 h-3.5 ml-1" />
-                </button>
-
-                <button
-                  onClick={() => onLaunchApp()}
-                  className={`flex items-center gap-2 rounded-2xl border px-5 py-3.5 text-sm font-semibold transition cursor-pointer ${
-                    isLight
-                      ? 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'
-                      : 'border-[#1E293B] bg-[#0C121E] hover:bg-[#121B2B] text-slate-200'
-                  }`}
-                >
-                  <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Explore Devnet Vault</span>
                 </button>
               </div>
 
@@ -475,9 +463,9 @@ export default function LandingView({
                     : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
                 }`}
               >
-                <FontAwesomeIcon icon={faMobileScreen} className="w-5 h-5" />
-                <span>Launch StockPilot App</span>
-                <FontAwesomeIcon icon={faArrowRight} className="w-4 h-4 ml-1" />
+                <FontAwesomeIcon icon={faBolt} className="w-4 h-4" />
+                <span>Launch App</span>
+                <FontAwesomeIcon icon={faArrowRight} className="w-3.5 h-3.5 ml-1" />
               </button>
             </div>
           </div>
