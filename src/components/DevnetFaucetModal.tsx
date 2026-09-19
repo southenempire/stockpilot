@@ -80,18 +80,29 @@ export default function DevnetFaucetModal({
           <div className="mt-4 rounded-xl border border-[#14F195]/30 bg-[#14F195]/10 p-4 text-xs text-[#14F195]">
             <div className="flex items-center gap-2 font-bold">
               <CheckCircle className="h-4 w-4" />
-              <span>Airdrop Confirmed on Devnet!</span>
+              <span>Devnet Funding Activated!</span>
             </div>
             <p className="mt-1 text-[11px] text-zinc-300">{result.message}</p>
-            <a
-              href={result.explorerUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-flex items-center gap-1 font-semibold underline text-[#14F195] hover:text-white"
-            >
-              <span>View on Solana Explorer</span>
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            <div className="mt-3 flex items-center gap-3">
+              <a
+                href={result.explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold underline text-[#14F195] hover:text-white"
+              >
+                <span>View on Solana Explorer</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+              <a
+                href={`https://faucet.solana.com/?address=${walletAddress || ''}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-semibold text-sky-400 hover:underline"
+              >
+                <span>Solana Web Faucet</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           </div>
         )}
 
@@ -99,7 +110,7 @@ export default function DevnetFaucetModal({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+            className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-white/10 cursor-pointer"
           >
             Close
           </button>
@@ -107,7 +118,7 @@ export default function DevnetFaucetModal({
             type="button"
             disabled={loading}
             onClick={handleClaim}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#9945FF] to-[#14F195] py-2.5 text-xs font-bold text-black shadow-lg shadow-[#14F195]/20 hover:opacity-95 disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#9945FF] to-[#14F195] py-2.5 text-xs font-bold text-black shadow-lg shadow-[#14F195]/20 hover:opacity-95 disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <>
@@ -117,7 +128,7 @@ export default function DevnetFaucetModal({
             ) : (
               <>
                 <Sparkles className="h-4 w-4 text-black" />
-                <span>Claim 1,000 USDC</span>
+                <span>Claim Devnet USDC</span>
               </>
             )}
           </button>

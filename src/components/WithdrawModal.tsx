@@ -28,7 +28,6 @@ interface WithdrawModalProps {
   realUsdcBalance: number | null;
   realVaultBalance: number | null;
   solPriceUsd: number;
-  isDemoMode: boolean;
   connected: boolean;
   publicKey: PublicKey | null;
   onWithdrawSuccess: (
@@ -50,7 +49,6 @@ export default function WithdrawModal({
   realUsdcBalance,
   realVaultBalance,
   solPriceUsd,
-  isDemoMode,
   connected,
   publicKey: propPublicKey,
   onWithdrawSuccess,
@@ -74,11 +72,7 @@ export default function WithdrawModal({
   const isLight = theme === 'light';
 
   // Calculate available based on selected source
-  const sourceAvailableUsdc = isDemoMode
-    ? withdrawSource === 'reserve'
-      ? vaultCashReserveUsdc
-      : activePositionsUsdc
-    : (realUsdcBalance ?? 0) + ((realVaultBalance ?? 0) * solPriceUsd);
+  const sourceAvailableUsdc = (realUsdcBalance ?? 0) + ((realVaultBalance ?? 0) * solPriceUsd);
 
   const availableSol = solPriceUsd > 0 ? sourceAvailableUsdc / solPriceUsd : 0;
   const maxAvailable = withdrawAsset === 'USDC' ? sourceAvailableUsdc : availableSol;
@@ -113,7 +107,7 @@ export default function WithdrawModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && !isDemoMode && sendTransaction) {
+      if (activePublicKey && sendTransaction) {
         // Build real on-chain Anchor withdrawal transaction
         const tx = await buildWithdrawTransaction(
           connection,

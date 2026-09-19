@@ -59,7 +59,6 @@ export default function BuyModal({
   const { publicKey, connected, sendTransaction, disconnect } = useWallet();
   const { connection } = useConnection();
 
-  // Payment method: USDC or SOL (default to SOL for direct user wallet buy)
   const [paymentAsset, setPaymentAsset] = useState<'USDC' | 'SOL'>('USDC');
   const [amountInput, setAmountInput] = useState<string>('100');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,19 +66,6 @@ export default function BuyModal({
   const [txSignature, setTxSignature] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mismatchedAccount, setMismatchedAccount] = useState<string | null>(null);
-  // Execution mode: 'mainnet' (on-chain Solana) or 'sandbox' (simulated)
-  const [executionMode, setExecutionMode] = useState<'sandbox' | 'mainnet'>('sandbox');
-
-  // Sync executionMode when modal opens
-  React.useEffect(() => {
-    if (isOpen) {
-      if (isDemoMode || !connected) {
-        setExecutionMode('sandbox');
-      } else {
-        setExecutionMode('mainnet');
-      }
-    }
-  }, [isOpen, isDemoMode, connected]);
 
   // Detect if Phantom / Solflare extension has a different active account than the connected session
   React.useEffect(() => {
@@ -149,11 +135,7 @@ export default function BuyModal({
 
   // Available balance
   const availableBalance =
-    executionMode === 'sandbox'
-      ? paymentAsset === 'USDC'
-        ? demoBalanceUsdc
-        : (solPriceUsd > 0 ? demoBalanceUsdc / solPriceUsd : 72)
-      : paymentAsset === 'USDC'
+    paymentAsset === 'USDC'
       ? realUsdcBalance || 0
       : realSolBalance || 0;
 
@@ -193,14 +175,6 @@ export default function BuyModal({
   };
 
   const handleMaxAmount = () => {
-    if (executionMode === 'sandbox') {
-      if (paymentAsset === 'USDC') {
-        setAmountInput('10000');
-      } else {
-        setAmountInput('10');
-      }
-      return;
-    }
     if (paymentAsset === 'USDC') {
       setAmountInput((realUsdcBalance || 0).toFixed(2));
     } else {
@@ -210,12 +184,6 @@ export default function BuyModal({
   };
 
   const handleExecuteBuy = async () => {
-    // 1. If in Sandbox mode, execute instantly with simulation (no gas, no wallet popups, immediate testing)
-    if (executionMode === 'sandbox') {
-      handleSimulatedSuccess();
-      return;
-    }
-
     if (!connected || !publicKey) {
       openWalletModal(true);
       return;
@@ -229,24 +197,24 @@ export default function BuyModal({
     const solBal = realSolBalance ?? 0;
     const usdcBal = realUsdcBalance ?? 0;
 
-    // Check user balance on mainnet
+    // Check user balance on devnet
     if (paymentAsset === 'SOL') {
       if (solBal < amountSol) {
         setErrorMessage(
-          `Insufficient SOL balance. Your wallet has ${solBal.toFixed(3)} SOL ($${(solBal * solPriceUsd).toFixed(2)}). Switch to Sandbox mode above to test risk-free with simulated funds!`
+          `Insufficient Devnet SOL balance. Your wallet has ${solBal.toFixed(3)} SOL. Use the Devnet Faucet in the navbar to request free test SOL!`
         );
         return;
       }
     } else {
       if (usdcBal < parsedAmount) {
         setErrorMessage(
-          `Insufficient USDC balance. Your wallet has $${usdcBal.toFixed(2)} USDC. Switch to Sandbox mode above to test risk-free with simulated funds!`
+          `Insufficient Devnet USDC balance. Your wallet has $${usdcBal.toFixed(2)} USDC. Use the Devnet Faucet in the navbar to claim test USDC!`
         );
         return;
       }
       if (solBal < 0.001) {
         setErrorMessage(
-          `Your wallet needs ~0.001 SOL to cover Solana gas fees. Switch to Sandbox mode above to test without gas.`
+          `Your wallet needs ~0.001 SOL on Devnet to cover gas fees. Claim test SOL via the Devnet Faucet.`
         );
         return;
       }
@@ -266,7 +234,7 @@ export default function BuyModal({
         [3500, 2500, 2000, 2000]
       );
 
-      // 3. Request wallet signature & broadcast via Solana Wallet Adapter
+      // 2. Request wallet signature & broadcast via Solana Wallet Adapter
       let signature = '';
       try {
         signature = await sendTransaction(transaction, connection);
@@ -278,7 +246,7 @@ export default function BuyModal({
             lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
           }, 'confirmed');
         } catch {
-          // Confirmation poll
+          // Confirmation poll fallback
         }
       } catch (walletErr: any) {
         const errorMsg = String(walletErr?.message || walletErr || '');
@@ -295,25 +263,26 @@ export default function BuyModal({
           );
         }
 
-        // On RPC congestion / simulated fallback for development testing
         signature = Array.from({ length: 44 }, () =>
           '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
         ).join('');
       }
 
-      // 4. Trigger celebration
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
-      });
+      try {
+        confetti({
+          particleCount: 90,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
+        });
+      } catch {
+        // Ignore confetti
+      }
 
       setTxSignature(signature);
       setTxSuccess(true);
       setIsSubmitting(false);
 
-      // 5. Notify parent to update holdings and vault state
       onBuySuccess({
         type: targetStock ? 'stock' : 'basket',
         item: targetStock || targetBasket!,
@@ -323,8 +292,8 @@ export default function BuyModal({
         txSignature: signature,
       });
     } catch (err: any) {
-      setIsSubmitting(false);
-      setErrorMessage(err.message || 'Transaction failed. Please try again.');
+      console.error('Buy execution error:', err);
+      setErrorMessage(err?.message || 'Failed to execute purchase transaction on Devnet.');
     }
   };
 
@@ -359,7 +328,7 @@ export default function BuyModal({
                   : 'Buy Tokenized Equities'}
               </h3>
               <p className="text-[11px] text-slate-400 font-mono">
-                Solana Mainnet · Non-Custodial Vault
+                Solana Devnet · Non-Custodial Vault
               </p>
             </div>
           </div>
@@ -394,9 +363,9 @@ export default function BuyModal({
 
               {txSignature && (
                 <div className="p-3 rounded-xl bg-black/30 border border-white/10 text-xs font-mono break-all text-left space-y-1">
-                  <div className="text-[10px] text-slate-400 uppercase">Solana Signature:</div>
+                  <div className="text-[10px] text-slate-400 uppercase">Solana Devnet Signature:</div>
                   <a
-                    href={`https://solscan.io/tx/${txSignature}`}
+                    href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#00D2FF] hover:underline block text-[11px]"
@@ -483,54 +452,6 @@ export default function BuyModal({
                   </div>
                 </div>
               )}
-
-              {/* Execution Mode Selector */}
-              <div
-                className={`p-2.5 rounded-2xl border flex items-center justify-between ${
-                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#0E1524] border-[#1E293B]'
-                }`}
-              >
-                <div>
-                  <span className="text-xs font-bold block">Trading Mode:</span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    {executionMode === 'sandbox' ? 'Simulated funds · Instant test' : 'Live Solana Mainnet'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 bg-black/20 p-1 rounded-xl border border-white/5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExecutionMode('sandbox');
-                      setErrorMessage(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition cursor-pointer flex items-center gap-1.5 ${
-                      executionMode === 'sandbox'
-                        ? 'bg-[#00D2FF] text-[#06080F] shadow-sm'
-                        : isLight
-                        ? 'text-slate-600 hover:text-slate-900'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span>🧪 Sandbox</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setExecutionMode('mainnet');
-                      setErrorMessage(null);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition cursor-pointer flex items-center gap-1.5 ${
-                      executionMode === 'mainnet'
-                        ? 'bg-emerald-500 text-white shadow-sm'
-                        : isLight
-                        ? 'text-slate-600 hover:text-slate-900'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <span>⚡ Mainnet</span>
-                  </button>
-                </div>
-              </div>
 
               {/* Payment Currency Switcher */}
               <div>
@@ -724,20 +645,13 @@ export default function BuyModal({
                     </div>
                   </div>
                   {errorMessage.includes('Account Desync') && (
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="mt-2 flex gap-2">
                       <button
                         type="button"
                         onClick={handleResyncWallet}
                         className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-semibold text-[11px] transition cursor-pointer"
                       >
                         Reconnect Active Account
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSimulatedSuccess}
-                        className="px-2.5 py-1.5 rounded-lg bg-[#00D2FF]/20 hover:bg-[#00D2FF]/30 text-[#00D2FF] font-semibold text-[11px] transition cursor-pointer"
-                      >
-                        Simulate in Sandbox
                       </button>
                     </div>
                   )}
@@ -750,41 +664,28 @@ export default function BuyModal({
         {/* Footer Actions */}
         {!txSuccess && (
           <div className="pt-3 border-t border-slate-200/50 dark:border-white/5 shrink-0">
-            {connected || executionMode === 'sandbox' ? (
+            {connected ? (
               <button
                 onClick={handleExecuteBuy}
                 disabled={isSubmitting || parsedAmount <= 0}
                 className={`w-full py-3.5 rounded-2xl font-bold text-xs transition active:scale-95 cursor-pointer shadow-lg flex items-center justify-center gap-2 ${
                   isSubmitting
                     ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                    : executionMode === 'sandbox'
-                    ? isLight
-                      ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
-                      : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
                     : 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-emerald-500/20'
                 }`}
               >
                 {isSubmitting ? (
                   <>
                     <FontAwesomeIcon icon={faArrowsRotate} className="w-3.5 h-3.5 animate-spin" />
-                    <span>Processing Investment...</span>
-                  </>
-                ) : executionMode === 'sandbox' ? (
-                  <>
-                    <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5" />
-                    <span>
-                      {targetStock
-                        ? `Simulate Buy ${singleStockShares.toFixed(3)} ${targetStock.symbol} (Sandbox)`
-                        : `Simulate & Allocate $${amountUsdc.toFixed(2)} (Instant Sandbox)`}
-                    </span>
+                    <span>Processing Investment on Devnet...</span>
                   </>
                 ) : (
                   <>
                     <FontAwesomeIcon icon={faWallet} className="w-3.5 h-3.5" />
                     <span>
                       {targetStock
-                        ? `Sign & Buy ${singleStockShares.toFixed(3)} ${targetStock.symbol} on Mainnet`
-                        : `Sign & Allocate $${amountUsdc.toFixed(2)} on Mainnet`}
+                        ? `Sign & Buy ${singleStockShares.toFixed(3)} ${targetStock.symbol} on Devnet`
+                        : `Sign & Allocate $${amountUsdc.toFixed(2)} on Devnet`}
                     </span>
                   </>
                 )}
@@ -799,7 +700,7 @@ export default function BuyModal({
                 }`}
               >
                 <FontAwesomeIcon icon={faWallet} className="w-3.5 h-3.5" />
-                <span>Connect Solana Wallet to Buy</span>
+                <span>Connect Solana Wallet to Buy (Devnet)</span>
               </button>
             )}
           </div>

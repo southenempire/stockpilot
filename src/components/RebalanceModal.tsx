@@ -26,7 +26,6 @@ interface RebalanceModalProps {
   onConfirmRebalance: (sig?: string) => void;
   theme?: 'dark' | 'light';
   publicKey?: PublicKey | null;
-  isDemoMode?: boolean;
 }
 
 export default function RebalanceModal({
@@ -37,7 +36,6 @@ export default function RebalanceModal({
   onConfirmRebalance,
   theme = 'dark',
   publicKey: propPublicKey,
-  isDemoMode = false,
 }: RebalanceModalProps) {
   const { connection } = useConnection();
   const { publicKey: walletPublicKey, sendTransaction } = useWallet();
@@ -73,7 +71,7 @@ export default function RebalanceModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && !isDemoMode && sendTransaction) {
+      if (activePublicKey && sendTransaction) {
         // Build real on-chain rebalance transaction
         const driftBps = holdings.map((h) => Math.round((h.driftPercent || 0) * 100));
         const tx = await buildRebalanceTransaction(

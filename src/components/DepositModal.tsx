@@ -35,8 +35,6 @@ interface DepositModalProps {
   realSolBalance: number | null;
   realUsdcBalance: number | null;
   solPriceUsd: number;
-  isDemoMode: boolean;
-  demoBalanceUsdc?: number;
   connected: boolean;
   publicKey: PublicKey | null;
   onDepositSuccess: (
@@ -57,8 +55,6 @@ export default function DepositModal({
   realSolBalance,
   realUsdcBalance,
   solPriceUsd,
-  isDemoMode,
-  demoBalanceUsdc = 10000,
   connected,
   publicKey: propPublicKey,
   onDepositSuccess,
@@ -78,9 +74,7 @@ export default function DepositModal({
   if (!isOpen) return null;
 
   const isLight = theme === 'light';
-  const availableBalance = isDemoMode
-    ? (depositAsset === 'USDC' ? demoBalanceUsdc : (solPriceUsd > 0 ? demoBalanceUsdc / solPriceUsd : 72))
-    : (depositAsset === 'USDC' ? realUsdcBalance ?? 0 : realSolBalance ?? 0);
+  const availableBalance = depositAsset === 'USDC' ? (realUsdcBalance ?? 0) : (realSolBalance ?? 0);
 
   const parsedAmount = parseFloat(amountInput) || 0;
   const amountUsdcEquivalent =
@@ -106,7 +100,7 @@ export default function DepositModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && !isDemoMode && sendTransaction) {
+      if (activePublicKey && sendTransaction) {
         // Target weights in basis points (10000 = 100%)
         const targetWeights = holdings.map((h) => Math.round(h.targetWeight * 10000));
 

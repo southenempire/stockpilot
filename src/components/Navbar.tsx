@@ -11,18 +11,12 @@ const WalletMultiButton = dynamic(
 );
 
 interface NavbarProps {
-  isDemoMode: boolean;
-  setIsDemoMode: (val: boolean) => void;
-  demoBalanceUsdc: number;
   onOpenPromptModal: () => void;
   onOpenFaucetModal?: () => void;
   isPythLive?: boolean;
 }
 
 export default function Navbar({
-  isDemoMode,
-  setIsDemoMode,
-  demoBalanceUsdc,
   onOpenPromptModal,
   onOpenFaucetModal,
   isPythLive = true
@@ -73,24 +67,10 @@ export default function Navbar({
             <span>AI Basket Creator</span>
           </button>
 
-          {/* Demo Mode / Live Mode Badge */}
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#12131C] px-2.5 py-1.5">
-            <button
-              onClick={() => setIsDemoMode(!isDemoMode)}
-              className={`flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium transition ${
-                isDemoMode
-                  ? 'bg-[#14F195]/20 text-[#14F195] border border-[#14F195]/30'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-              <span>{isDemoMode ? 'Demo Pilot' : 'Live Devnet'}</span>
-            </button>
-            {isDemoMode && (
-              <span className="font-mono text-xs font-bold text-white pl-1 border-l border-white/10">
-                ${demoBalanceUsdc.toLocaleString()} USDC
-              </span>
-            )}
+          {/* Solana Devnet Network Badge */}
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#12131C] px-3 py-1.5 font-mono text-xs">
+            <span className="h-2 w-2 rounded-full bg-[#14F195] animate-pulse"></span>
+            <span className="font-bold text-white">Solana Devnet</span>
           </div>
 
           {/* Solana Wallet Button */}

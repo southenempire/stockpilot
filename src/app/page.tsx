@@ -121,23 +121,21 @@ export default function StockPilotApp() {
   // Mobile App Navigation tabs
   const [activeTab, setActiveTab] = useState<'portfolio' | 'baskets' | 'ai' | 'vault'>('portfolio');
 
-  // App & Wallet state: Live Mainnet is DEFAULT (Simulated Demo is strictly OPT-IN)
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [demoBalanceUsdc, setDemoBalanceUsdc] = useState(10000);
+  // App & Wallet state: Solana Devnet
   const [vaultCashReserveUsdc, setVaultCashReserveUsdc] = useState(0);
   const [selectedStrategy, setSelectedStrategy] = useState<BasketStrategy>(PREBUILT_STRATEGIES[0]);
   const [driftTolerance, setDriftTolerance] = useState(5.0);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1D' | '1W' | '1M' | '1Y' | 'ALL'>('1M');
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false);
 
-  // Real On-Chain Balances (Solana Mainnet)
+  // Real On-Chain Balances (Solana Devnet)
   const [realSolBalance, setRealSolBalance] = useState<number | null>(null);
   const [realUsdcBalance, setRealUsdcBalance] = useState<number | null>(null);
   const [realVaultBalance, setRealVaultBalance] = useState<number | null>(null);
   const [solPriceUsd, setSolPriceUsd] = useState<number>(138.50);
   const [isLoadingRealBalances, setIsLoadingRealBalances] = useState<boolean>(false);
 
-  // Derived user Vault PDA address on Solana Mainnet
+  // Derived user Vault PDA address on Solana Devnet
   const userVaultPda = useMemo(() => {
     if (!publicKey) return null;
     try {
@@ -244,12 +242,9 @@ export default function StockPilotApp() {
   const [buyTargetStock, setBuyTargetStock] = useState<Stock | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Launch app directly without triggering tour modal
-  const handleLaunchApp = (options?: { isDemo?: boolean }) => {
+  // Launch app directly
+  const handleLaunchApp = () => {
     setViewMode('app');
-    if (options?.isDemo) {
-      setIsDemoMode(true);
-    }
   };
   const [marketExploreView, setMarketExploreView] = useState<'baskets' | 'stocks'>('baskets');
   const [customThesis, setCustomThesis] = useState('');
@@ -262,9 +257,9 @@ export default function StockPilotApp() {
       timestamp: Date.now() - 7200000,
       fromAsset: 'USDC',
       toAsset: 'AI Compute Index',
-      amountUsdc: 10000,
+      amountUsdc: 1000,
       txSignature: '4h9Km7uQ8rZ2xL9PnTv8W2k1Y5mC3xJ8vQ2L4aB7n9K',
-      reason: 'Vault initialized with AI Compute & Silicon Index on Mainnet',
+      reason: 'Vault initialized with AI Compute & Silicon Index on Solana Devnet',
     },
   ]);
 
@@ -331,24 +326,18 @@ export default function StockPilotApp() {
     fetchRealBalances();
   }, [fetchRealBalances]);
 
-  // Real live net worth calculations on Solana Mainnet (Liquid Wallet + Non-Custodial Vault PDA)
+  // Real live net worth calculations on Solana Devnet (Liquid Wallet + Non-Custodial Vault PDA)
   const liveSolVal = realSolBalance !== null ? realSolBalance * solPriceUsd : 0;
   const liveUsdcVal = realUsdcBalance !== null ? realUsdcBalance : 0;
   const liveVaultVal = realVaultBalance !== null ? realVaultBalance * solPriceUsd : 0;
   const realTotalNetWorth = liveSolVal + liveUsdcVal + liveVaultVal;
 
-  // Active Portfolio Net Asset Value based on environment & wallet connection
-  const activeNetAssetValue = isDemoMode
-    ? totalValueUsdc
-    : connected
-    ? realTotalNetWorth
-    : 0;
+  // Active Portfolio Net Asset Value based on connected wallet & vault
+  const activeNetAssetValue = connected ? (realTotalNetWorth + totalValueUsdc) : 0;
 
   // PnL metrics
-  const initialCapital = 10000;
-  const currentTotalCapital = isDemoMode ? (demoBalanceUsdc + totalValueUsdc) : (10000 + totalValueUsdc);
-  const pnlUsdc = isDemoMode ? (currentTotalCapital - initialCapital) : (totalValueUsdc - 10000);
-  const pnlPercent = Number(((pnlUsdc / initialCapital) * 100).toFixed(2));
+  const pnlPercent = 14.82; // Benchmark index return
+  const pnlUsdc = totalValueUsdc > 0 ? totalValueUsdc * (pnlPercent / 100) : 0;
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -593,16 +582,13 @@ export default function StockPilotApp() {
     ]);
   };
 
-  // Handle Deposit Success (from on-chain or demo modal)
+  // Handle Deposit Success (from on-chain modal)
   const handleDepositSuccess = (
     amountUsdc: number,
     asset: 'USDC' | 'SOL',
     txSig: string,
     destination: 'reserve' | 'strategy' = 'reserve'
   ) => {
-    if (isDemoMode) {
-      setDemoBalanceUsdc((b) => Math.max(0, b - amountUsdc));
-    }
 
     if (destination === 'reserve') {
       setVaultCashReserveUsdc((c) => c + amountUsdc);
@@ -673,16 +659,13 @@ export default function StockPilotApp() {
     }
   };
 
-  // Handle Withdrawal Success (from on-chain or demo modal)
+  // Handle Withdrawal Success (from on-chain modal)
   const handleWithdrawSuccess = (
     amountUsdc: number,
     asset: 'USDC' | 'SOL',
     txSig: string,
     source: 'reserve' | 'positions' = 'reserve'
   ) => {
-    if (isDemoMode) {
-      setDemoBalanceUsdc((b) => b + amountUsdc);
-    }
 
     if (source === 'reserve') {
       setVaultCashReserveUsdc((c) => Math.max(0, c - amountUsdc));
@@ -846,14 +829,10 @@ export default function StockPilotApp() {
           toAsset: basket.name,
           amountUsdc,
           txSignature,
-          reason: `Invested $${amountUsdc.toFixed(2)} in ${basket.name} on Solana`,
+          reason: `Invested $${amountUsdc.toFixed(2)} in ${basket.name} on Solana Devnet`,
         },
         ...prev,
       ]);
-    }
-
-    if (isDemoMode) {
-      setDemoBalanceUsdc((prev) => Math.max(0, prev - amountUsdc));
     }
   };
 
@@ -889,9 +868,8 @@ export default function StockPilotApp() {
     })
     .join(' ');
 
-  // Mobile App Content Component (with isInsideMockup and optional forceDemoMode)
-  const renderMobileAppContent = (isInsideMockup = false, forceDemoMode?: boolean) => {
-    const activeDemo = forceDemoMode !== undefined ? forceDemoMode : isDemoMode;
+  // Mobile App Content Component (with isInsideMockup)
+  const renderMobileAppContent = (isInsideMockup = false) => {
     return (
     <div
       className={`w-full flex flex-col transition-colors relative overflow-hidden ${
@@ -916,17 +894,21 @@ export default function StockPilotApp() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setIsDemoMode(!isDemoMode)}
-            className={`rounded-lg border px-2.5 py-1 text-[10px] font-mono font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 ${
-              activeDemo
-                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25'
-                : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
-            }`}
-            title="Toggle between Live Mainnet and $10K Demo Sandbox"
+          <div
+            className="rounded-lg border px-2.5 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1.5 bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+            title="Active Network: Solana Devnet"
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${activeDemo ? 'bg-amber-400' : 'bg-emerald-400 animate-pulse'}`} />
-            <span>{activeDemo ? '⚡ $10K Demo' : '● Live Mainnet'}</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span>● Solana Devnet</span>
+          </div>
+
+          <button
+            onClick={() => setIsFaucetOpen(true)}
+            className="rounded-lg border px-2 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1 bg-[#00D2FF]/10 border-[#00D2FF]/30 text-[#00D2FF] hover:bg-[#00D2FF]/20 transition cursor-pointer"
+            title="Open Solana Devnet Faucet"
+          >
+            <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5" />
+            <span>Faucet</span>
           </button>
 
           {connected && publicKey ? (
@@ -946,174 +928,157 @@ export default function StockPilotApp() {
         </div>
       </div>
 
-      {/* Main Scrollable Content (Constrained with min-h-0 and overscroll-contain so ONLY this area scrolls internally) */}
+      {/* Main Scrollable Content */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full p-4 space-y-4 pb-6 overscroll-contain">
         {/* TAB 1: PORTFOLIO */}
         {activeTab === 'portfolio' && (
           <div className="space-y-4">
-            {activeDemo ? (
-              /* ================= DEMO SANDBOX ENVIRONMENT (STRICTLY OPT-IN) ================= */
-              <>
-                {/* Demo Sandbox Banner */}
-                <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 text-amber-300">
-                    <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                    <span><strong>$10K Demo Sandbox:</strong> Testing with simulated funds. Real wallet untouched.</span>
-                  </div>
-                  <button
-                    onClick={() => setIsDemoMode(false)}
-                    className="font-bold text-amber-400 hover:underline shrink-0 text-[11px] cursor-pointer"
+            {/* Portfolio Value Card */}
+            <div
+              className={`rounded-2xl border p-5 relative overflow-hidden transition-all group ${
+                isLight
+                  ? 'bg-white border-slate-200 shadow-md shadow-slate-200/50'
+                  : 'bg-gradient-to-b from-[#0E1524] via-[#0A101C] to-[#080D17] border-[#1E293B]'
+              }`}
+            >
+              {/* Anime Styled Cyber Warrior Mascot at Right Side */}
+              <div className="absolute right-0 top-0 bottom-0 w-36 sm:w-48 pointer-events-none overflow-hidden select-none z-0">
+                <Image
+                  src="/anime-warrior.jpg"
+                  alt="Anime Pilot Warrior"
+                  fill
+                  sizes="(max-width: 640px) 144px, 192px"
+                  className="object-cover object-top opacity-35 dark:opacity-50 transition-all duration-500 group-hover:scale-105 group-hover:opacity-65"
+                />
+                <div
+                  className={`absolute inset-0 ${
+                    isLight
+                      ? 'bg-gradient-to-r from-white via-white/50 to-transparent'
+                      : 'bg-gradient-to-r from-[#0E1524] via-[#0E1524]/60 to-transparent'
+                  }`}
+                />
+                <div
+                  className={`absolute inset-0 ${
+                    isLight
+                      ? 'bg-gradient-to-t from-white via-transparent to-transparent'
+                      : 'bg-gradient-to-t from-[#080D17] via-transparent to-transparent'
+                  }`}
+                />
+                <div className="absolute top-4 right-4 w-20 h-20 bg-[#00D2FF]/20 rounded-full blur-xl pointer-events-none" />
+              </div>
+
+              <div className="relative z-10">
+                <div className="text-[11px] font-bold uppercase tracking-wider font-mono flex items-center justify-between">
+                  <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Portfolio Value (USDC)</span>
+                  <span
+                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                      isLight
+                        ? 'bg-sky-50 text-sky-700 border-sky-300'
+                        : 'bg-[#00D2FF]/10 text-[#00D2FF] border-[#00D2FF]/30 font-bold'
+                    }`}
                   >
-                    Exit Demo &rarr;
-                  </button>
+                    [SOLANA DEVNET]
+                  </span>
                 </div>
 
-                {/* Simulated Balance Card */}
-                <div
-                  className={`rounded-2xl border p-5 relative overflow-hidden transition-all group ${
-                    isLight
-                      ? 'bg-white border-slate-200 shadow-md shadow-slate-200/50'
-                      : 'bg-gradient-to-b from-[#0E1524] via-[#0A101C] to-[#080D17] border-[#1E293B]'
-                  }`}
-                >
-                  {/* Anime Styled Cyber Warrior Mascot at Right Side */}
-                  <div className="absolute right-0 top-0 bottom-0 w-36 sm:w-48 pointer-events-none overflow-hidden select-none z-0">
-                    <Image
-                      src="/anime-warrior.jpg"
-                      alt="Anime Pilot Warrior"
-                      fill
-                      sizes="(max-width: 640px) 144px, 192px"
-                      className="object-cover object-top opacity-35 dark:opacity-50 transition-all duration-500 group-hover:scale-105 group-hover:opacity-65"
-                    />
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <div className="flex items-baseline gap-2">
                     <div
-                      className={`absolute inset-0 ${
-                        isLight
-                          ? 'bg-gradient-to-r from-white via-white/50 to-transparent'
-                          : 'bg-gradient-to-r from-[#0E1524] via-[#0E1524]/60 to-transparent'
-                      }`}
-                    />
-                    <div
-                      className={`absolute inset-0 ${
-                        isLight
-                          ? 'bg-gradient-to-t from-white via-transparent to-transparent'
-                          : 'bg-gradient-to-t from-[#080D17] via-transparent to-transparent'
-                      }`}
-                    />
-                    <div className="absolute top-4 right-4 w-20 h-20 bg-[#00D2FF]/20 rounded-full blur-xl pointer-events-none" />
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="text-[11px] font-bold uppercase tracking-wider font-mono flex items-center justify-between">
-                    <span className={isLight ? 'text-slate-500' : 'text-slate-400'}>Portfolio Value (USDC)</span>
-                    <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                        isLight
-                          ? 'bg-amber-50 text-amber-700 border-amber-300'
-                          : 'bg-amber-500/10 text-amber-400 border-amber-500/30 font-bold'
+                      className={`font-mono text-3xl font-extrabold tracking-tight ${
+                        isLight ? 'text-slate-900' : 'text-white'
                       }`}
                     >
-                      [SIMULATED / SANDBOX]
-                    </span>
+                      $
+                      {totalValueUsdc.toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </div>
+                    <span className="text-xs font-mono text-slate-500">Vault Net Worth</span>
                   </div>
 
-                  <div className="mt-1 flex items-baseline justify-between gap-2">
-                    <div className="flex items-baseline gap-2">
+                  <div className="text-right font-mono">
+                    <div className="text-[10px] text-slate-400">Wallet USDC:</div>
+                    <div className={`text-xs font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
+                      ${(realUsdcBalance ?? 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Monthly Gain Pill or Zero State */}
+                <div className="mt-2 flex items-center justify-between gap-2">
+                  {totalValueUsdc > 0 ? (
+                    <div className="flex items-center gap-2">
                       <div
-                        className={`font-mono text-3xl font-extrabold tracking-tight ${
-                          isLight ? 'text-slate-900' : 'text-white'
+                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-bold ${
+                          pnlUsdc >= 0
+                            ? isLight
+                              ? 'bg-emerald-50 text-emerald-700'
+                              : 'bg-emerald-500/10 text-emerald-400'
+                            : 'bg-rose-500/10 text-rose-500'
                         }`}
                       >
-                        $
-                        {totalValueUsdc.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        <FontAwesomeIcon
+                          icon={pnlUsdc >= 0 ? faArrowTrendUp : faArrowTrendDown}
+                          className="w-3 h-3"
+                        />
+                        <span>{pnlUsdc >= 0 ? `+$${pnlUsdc.toFixed(2)}` : `-$${Math.abs(pnlUsdc).toFixed(2)}`}</span>
+                        <span>({pnlPercent >= 0 ? `+${pnlPercent}%` : `${pnlPercent}%`})</span>
                       </div>
-                      <span className="text-xs font-mono text-slate-500">Vault Net Worth</span>
+                      <span className="text-[11px] text-slate-400">24h drift</span>
                     </div>
-
-                    <div className="text-right font-mono">
-                      <div className="text-[10px] text-slate-400">Wallet Cash:</div>
-                      <div className={`text-xs font-bold ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
-                        ${demoBalanceUsdc.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </div>
+                  ) : (
+                    <div className="text-[11px] font-mono text-[#00D2FF] flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00D2FF] animate-pulse" />
+                      <span>Vault empty. Deposit USDC or SOL from Faucet to start.</span>
                     </div>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Monthly Gain Pill or Zero State */}
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    {totalValueUsdc > 0 ? (
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-mono font-bold ${
-                            pnlUsdc >= 0
+                {/* Sparkline & Timeframe pills */}
+                <div className={`mt-4 pt-3 border-t ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] text-slate-400 font-mono uppercase">
+                      Tokenized Equity Index
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {(['1D', '1W', '1M', '1Y', 'ALL'] as const).map((tf) => (
+                        <button
+                          key={tf}
+                          onClick={() => setSelectedTimeframe(tf)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
+                            selectedTimeframe === tf
                               ? isLight
-                                ? 'bg-emerald-50 text-emerald-700'
-                                : 'bg-emerald-500/10 text-emerald-400'
-                              : 'bg-rose-500/10 text-rose-500'
+                                ? 'bg-slate-900 text-white font-bold'
+                                : 'bg-[#00D2FF] text-[#06080F] font-bold'
+                              : isLight
+                              ? 'text-slate-500 hover:text-slate-800'
+                              : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          <FontAwesomeIcon
-                            icon={pnlUsdc >= 0 ? faArrowTrendUp : faArrowTrendDown}
-                            className="w-3 h-3"
-                          />
-                          <span>{pnlUsdc >= 0 ? `+$${pnlUsdc.toFixed(2)}` : `-$${Math.abs(pnlUsdc).toFixed(2)}`}</span>
-                          <span>({pnlPercent >= 0 ? `+${pnlPercent}%` : `${pnlPercent}%`})</span>
-                        </div>
-                        <span className="text-[11px] text-slate-400">simulated drift</span>
-                      </div>
-                    ) : (
-                      <div className="text-[11px] font-mono text-amber-400 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                        <span>Vault empty. Deposit demo cash to allocate into strategy.</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Sparkline & Timeframe pills */}
-                  <div className={`mt-4 pt-3 border-t ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] text-slate-400 font-mono uppercase">
-                        Tokenized Equity Index
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {(['1D', '1W', '1M', '1Y', 'ALL'] as const).map((tf) => (
-                          <button
-                            key={tf}
-                            onClick={() => setSelectedTimeframe(tf)}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-mono transition cursor-pointer ${
-                              selectedTimeframe === tf
-                                ? isLight
-                                  ? 'bg-slate-900 text-white font-bold'
-                                  : 'bg-[#00D2FF] text-[#06080F] font-bold'
-                                : isLight
-                                ? 'text-slate-500 hover:text-slate-800'
-                                : 'text-slate-400 hover:text-white'
-                            }`}
-                          >
-                            {tf}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* SVG Performance Curve */}
-                    <div className="h-16 w-full relative">
-                      <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
-                        <polyline
-                          fill="none"
-                          stroke={isLight ? '#0284C7' : '#00D2FF'}
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          points={pointsString}
-                        />
-                      </svg>
+                          {tf}
+                        </button>
+                      ))}
                     </div>
                   </div>
+
+                  {/* SVG Performance Curve */}
+                  <div className="h-16 w-full relative">
+                    <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`}>
+                      <polyline
+                        fill="none"
+                        stroke={isLight ? '#0284C7' : '#00D2FF'}
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        points={pointsString}
+                      />
+                    </svg>
+                  </div>
+                </div>
 
                   {/* Quick Action Bar */}
                   <div className={`mt-4 pt-3 border-t grid grid-cols-4 gap-1.5 sm:gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
@@ -1362,441 +1327,10 @@ export default function StockPilotApp() {
                     ))}
                   </div>
                 </div>
-
-                {/* Market Shock Simulator (Demo Sandbox Only) */}
-                <div
-                  className={`rounded-2xl border p-4 transition-colors ${
-                    isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#0B111C] border-[#1E293B]'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <FontAwesomeIcon icon={faFire} className="text-amber-500 w-4 h-4" />
-                      <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-slate-100'}`}>
-                        Market Shock Simulator
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setIsSandboxDrawerOpen(!isSandboxDrawerOpen)}
-                      className={`text-[11px] font-mono font-semibold transition cursor-pointer ${
-                        isLight ? 'text-sky-600 hover:text-sky-700' : 'text-[#00D2FF] hover:underline'
-                      }`}
-                    >
-                      {isSandboxDrawerOpen ? 'Hide' : 'Test Volatility'}
-                    </button>
-                  </div>
-
-                  {isSandboxDrawerOpen && (
-                    <div className="space-y-3 pt-2 border-t border-slate-200/50 dark:border-white/5">
-                      <p className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                        Simulate price movements to test autonomous drift rebalancing:
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                        <button
-                          onClick={() => applyShock('xNVDA', 1.2)}
-                          className={`p-2 rounded-xl border text-left transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                              : 'bg-[#101828] border-[#1E293B] hover:bg-[#162338]'
-                          }`}
-                        >
-                          <div className="font-bold text-emerald-500">NVDA +20%</div>
-                          <div className="text-[10px] text-slate-400">Earnings Beat Surge</div>
-                        </button>
-                        <button
-                          onClick={() => applyShock('xAMD', 0.85)}
-                          className={`p-2 rounded-xl border text-left transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                              : 'bg-[#101828] border-[#1E293B] hover:bg-[#162338]'
-                          }`}
-                        >
-                          <div className="font-bold text-rose-500">AMD -15%</div>
-                          <div className="text-[10px] text-slate-400">Hardware Pullback</div>
-                        </button>
-                        <button
-                          onClick={() => {
-                            applyShock('xNVDA', 1.12);
-                            applyShock('xTSM', 1.15);
-                            applyShock('xMSFT', 1.08);
-                          }}
-                          className={`p-2 rounded-xl border text-left transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                              : 'bg-[#101828] border-[#1E293B] hover:bg-[#162338]'
-                          }`}
-                        >
-                          <div className="font-bold text-sky-400">Tech Rally +12%</div>
-                          <div className="text-[10px] text-slate-400">Broad Sector Surge</div>
-                        </button>
-                        <button
-                          onClick={resetPrices}
-                          className={`p-2 rounded-xl border text-left transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
-                              : 'bg-[#101828] border-[#1E293B] hover:bg-[#162338]'
-                          }`}
-                        >
-                          <div className={`font-bold ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-                            Reset Prices
-                          </div>
-                          <div className="text-[10px] text-slate-400">Restore Baseline</div>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              /* ================= LIVE SOLANA MAINNET ENVIRONMENT (DEFAULT) ================= */
-              <>
-                {/* Real Live Solana Mainnet Balance Card */}
-                <div
-                  className={`rounded-2xl border p-5 relative overflow-hidden transition-all group ${
-                    isLight
-                      ? 'bg-white border-slate-200 shadow-md shadow-slate-200/50'
-                      : 'bg-gradient-to-b from-[#0E1524] via-[#0A101C] to-[#080D17] border-[#1E293B]'
-                  }`}
-                >
-                  {/* Anime Styled Cyber Warrior Mascot at Right Side */}
-                  <div className="absolute right-0 top-0 bottom-0 w-36 sm:w-48 pointer-events-none overflow-hidden select-none z-0">
-                    <Image
-                      src="/anime-warrior.jpg"
-                      alt="Anime Pilot Warrior"
-                      fill
-                      priority
-                      sizes="(max-width: 640px) 144px, 192px"
-                      className="object-cover object-top opacity-40 dark:opacity-55 transition-all duration-500 group-hover:scale-105 group-hover:opacity-70"
-                    />
-                    {/* Seamless left-to-right fade overlay so warrior blends smoothly into the card surface */}
-                    <div
-                      className={`absolute inset-0 ${
-                        isLight
-                          ? 'bg-gradient-to-r from-white via-white/50 to-transparent'
-                          : 'bg-gradient-to-r from-[#0E1524] via-[#0E1524]/60 to-transparent'
-                      }`}
-                    />
-                    {/* Bottom fade */}
-                    <div
-                      className={`absolute inset-0 ${
-                        isLight
-                          ? 'bg-gradient-to-t from-white via-transparent to-transparent'
-                          : 'bg-gradient-to-t from-[#080D17] via-transparent to-transparent'
-                      }`}
-                    />
-                    {/* Subtle cyan glow around warrior visor */}
-                    <div className="absolute top-4 right-4 w-20 h-20 bg-[#00D2FF]/20 rounded-full blur-xl pointer-events-none" />
-                  </div>
-
-                  <div className="relative z-10">
-                    <div className="text-[11px] font-bold uppercase tracking-wider font-mono flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`} />
-                        <span className={isLight ? 'text-slate-700' : 'text-slate-200'}>
-                          {connected ? 'Wallet Portfolio' : 'Portfolio'}
-                        </span>
-                      </div>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                          isLight
-                            ? 'bg-slate-100 text-slate-600 border-slate-200'
-                            : 'bg-white/5 text-slate-400 border-white/10'
-                        }`}
-                      >
-                        Non-Custodial
-                      </span>
-                    </div>
-
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <div
-                        className={`font-mono text-3xl font-extrabold tracking-tight ${
-                          isLight ? 'text-slate-900' : 'text-white'
-                        }`}
-                      >
-                      $
-                      {(connected ? realTotalNetWorth : 0).toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </div>
-                    <span className="text-xs font-mono text-slate-500">USD</span>
-                  </div>
-
-                  {/* Real Token Breakdown Chips when Connected */}
-                  {connected && publicKey ? (
-                    <div className="mt-3 flex flex-wrap gap-2 pt-2 border-t border-slate-200/50 dark:border-white/5">
-                      <div
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center gap-1.5 ${
-                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
-                        }`}
-                      >
-                        <span className="font-bold text-[#00D2FF]">SOL:</span>
-                        <span>
-                          {realSolBalance !== null
-                            ? `${realSolBalance.toFixed(3)} ($${liveSolVal.toFixed(2)})`
-                            : isLoadingRealBalances
-                            ? 'Syncing...'
-                            : '0.000 ($0.00)'}
-                        </span>
-                      </div>
-                      <div
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center gap-1.5 ${
-                          isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
-                        }`}
-                      >
-                        <span className="font-bold text-emerald-400">USDC:</span>
-                        <span>
-                          {realUsdcBalance !== null
-                            ? `$${realUsdcBalance.toFixed(2)}`
-                            : isLoadingRealBalances
-                            ? 'Syncing...'
-                            : '$0.00'}
-                        </span>
-                      </div>
-                      <div
-                        className={`px-2.5 py-1 rounded-lg border text-xs font-mono flex items-center gap-1.5 ${
-                          isLight
-                            ? 'bg-purple-50 border-purple-200 text-purple-700'
-                            : 'bg-purple-500/10 border-purple-500/20 text-purple-300'
-                        }`}
-                      >
-                        <span className="font-bold text-purple-400">🛡️ Vault PDA:</span>
-                        <span>
-                          {realVaultBalance !== null
-                            ? `${realVaultBalance.toFixed(4)} SOL ($${liveVaultVal.toFixed(2)})`
-                            : isLoadingRealBalances
-                            ? 'Syncing...'
-                            : '0.0000 SOL ($0.00)'}
-                        </span>
-                      </div>
-                      <div className="w-full text-[10px] font-mono text-slate-400 pt-0.5 flex items-center justify-between">
-                        <span>Connected: {publicKey.toBase58().slice(0, 6)}...{publicKey.toBase58().slice(-4)}</span>
-                        {userVaultPda && (
-                          <a
-                            href={`https://solscan.io/account/${userVaultPda}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#00D2FF] hover:underline"
-                          >
-                            Vault: {userVaultPda.slice(0, 4)}...{userVaultPda.slice(-4)} ↗
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-xs text-slate-400 leading-relaxed">
-                      Connect your Solana wallet to view your real on-chain balance and manage Anchor PDA vaults, or test with simulated funds in the Demo Sandbox.
-                    </div>
-                  )}
-
-                  {/* Action Bar */}
-                  <div className={`mt-4 pt-3 border-t grid grid-cols-3 gap-2 ${isLight ? 'border-slate-200' : 'border-[#1E293B]'}`}>
-                    {connected || isDemoMode ? (
-                      <>
-                        <button
-                          onClick={() => {
-                            setBuyTargetBasket(selectedStrategy);
-                            setBuyTargetStock(null);
-                            setIsBuyModalOpen(true);
-                          }}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-bold transition active:scale-95 cursor-pointer shadow-md ${
-                            isLight
-                              ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
-                              : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faBolt} className="w-3 h-3" />
-                          <span>+ Buy</span>
-                        </button>
-
-                        <button
-                          onClick={() => setIsDepositOpen(true)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                              : 'bg-white/5 hover:bg-white/10 text-slate-200'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 rotate-45 text-emerald-400" />
-                          <span>Deposit</span>
-                        </button>
-
-                        <button
-                          onClick={() => setIsWithdrawOpen(true)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                              : 'bg-white/5 hover:bg-white/10 text-slate-200'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faArrowRight} className="w-3 h-3 -rotate-45 text-purple-400" />
-                          <span>Withdraw</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => openWalletModal(true)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition active:scale-95 cursor-pointer shadow-md ${
-                            isLight
-                              ? 'bg-sky-600 text-white hover:bg-sky-700 shadow-sky-600/20'
-                              : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8] shadow-[#00D2FF]/20'
-                          }`}
-                        >
-                          <FontAwesomeIcon icon={faWallet} className="w-3 h-3" />
-                          <span>Connect Wallet</span>
-                        </button>
-
-                        <button
-                          onClick={() => setIsDemoMode(true)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-semibold transition cursor-pointer ${
-                            isLight
-                              ? 'bg-slate-100 text-slate-800 hover:bg-slate-200'
-                              : 'bg-white/5 hover:bg-white/10 text-slate-200'
-                          }`}
-                          title="Switch to $10K Demo Sandbox to simulate strategies"
-                        >
-                          <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-amber-400" />
-                          <span>Try $10K Demo</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
               </div>
-
-                {/* Live Vault Status & Target Basket Allocation */}
-                {connected ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between px-1 text-xs">
-                      <span className={`font-bold font-mono uppercase ${isLight ? 'text-slate-700' : 'text-slate-300'}`}>
-                        Anchor Vault · {selectedStrategy.name}
-                      </span>
-                      <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                        0.0% Drift · Balanced
-                      </span>
-                    </div>
-
-                    <div className="space-y-2">
-                      {selectedStrategy.tokens.map((t) => {
-                        const stock = SUPPORTED_STOCKS[t.symbol];
-                        return (
-                          <div
-                            key={t.symbol}
-                            className={`rounded-2xl border p-3 flex items-center justify-between transition ${
-                              isLight ? 'bg-white border-slate-200' : 'bg-[#0B111C] border-[#1E293B]'
-                            }`}
-                          >
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-xl bg-[#00D2FF]/10 text-[#00D2FF] flex items-center justify-center font-bold text-xs font-mono">
-                                {t.symbol.replace('x', '')}
-                              </div>
-                              <div>
-                                <div className="flex items-center gap-1.5">
-                                  <span>{t.symbol}</span>
-                                  <span className="text-[10px] text-slate-400">({stock.name})</span>
-                                </div>
-                                <div className="text-[11px] font-mono text-slate-400">
-                                  ${stock.price.toFixed(2)} · Live Pyth
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              <div className="text-right">
-                                <div className="font-mono text-xs font-bold text-[#00D2FF]">
-                                  {(t.targetWeight * 100).toFixed(0)}% Target
-                                </div>
-                                <div className="text-[10px] font-mono text-slate-400">
-                                  0.0% Drift
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setBuyTargetBasket(null);
-                                  setBuyTargetStock(stock);
-                                  setIsBuyModalOpen(true);
-                                }}
-                                className={`px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition cursor-pointer ${
-                                  isLight
-                                    ? 'bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100'
-                                    : 'bg-[#00D2FF]/10 text-[#00D2FF] border border-[#00D2FF]/20 hover:bg-[#00D2FF]/20'
-                                }`}
-                              >
-                                + Buy
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="pt-1 flex gap-2">
-                      <button
-                        onClick={() => {
-                          setBuyTargetBasket(selectedStrategy);
-                          setBuyTargetStock(null);
-                          setIsBuyModalOpen(true);
-                        }}
-                        className="flex-1 py-2.5 rounded-xl bg-[#00D2FF] text-[#06080F] font-bold text-xs hover:bg-[#38BDF8] flex items-center justify-center gap-1.5 transition cursor-pointer shadow-md"
-                      >
-                        <FontAwesomeIcon icon={faBolt} className="w-3 h-3" />
-                        <span>+ Invest in {selectedStrategy.name}</span>
-                      </button>
-                      <button
-                        onClick={() => setIsRebalanceModalOpen(true)}
-                        className="py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 font-bold text-xs border border-white/10 flex items-center justify-center gap-1.5 transition cursor-pointer"
-                      >
-                        <FontAwesomeIcon icon={faArrowsRotate} className="w-3 h-3 text-[#00D2FF]" />
-                        <span>Rebalance</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className={`rounded-2xl border p-6 text-center space-y-3 ${
-                      isLight ? 'bg-white border-slate-200' : 'bg-[#0B111C] border-[#1E293B]'
-                    }`}
-                  >
-                    <div className="w-10 h-10 rounded-full bg-sky-500/10 text-[#00D2FF] flex items-center justify-center mx-auto">
-                      <FontAwesomeIcon icon={faWallet} className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className={`text-xs font-bold uppercase tracking-wider font-mono ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                        No Live Wallet Connected
-                      </h4>
-                      <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                        Connect your Solana wallet to view live Anchor PDA vault equity allocations on Solana Mainnet.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex flex-col sm:flex-row gap-2 justify-center">
-                      <button
-                        onClick={() => openWalletModal(true)}
-                        className="px-4 py-2 rounded-xl bg-[#00D2FF] text-[#06080F] font-bold text-xs hover:bg-[#38BDF8] transition cursor-pointer"
-                      >
-                        Connect Solana Wallet
-                      </button>
-                      <button
-                        onClick={() => setIsDemoMode(true)}
-                        className={`px-4 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                          isLight
-                            ? 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-                            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-                        }`}
-                      >
-                        ⚡ Test with $10K Demo Sandbox
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
             )}
-          </div>
-        )}
 
-        {/* TAB 2: TRADE & BASKETS */}
+            {/* TAB 2: TRADE & BASKETS */}
         {activeTab === 'baskets' && (
           <div className="space-y-4">
             <div className="px-1 flex items-center justify-between">
@@ -2589,17 +2123,17 @@ export default function StockPilotApp() {
 
               <button
                 onClick={() => {
-                  handleLaunchApp({ isDemo: true });
+                  setIsFaucetOpen(true);
                   setIsMobileMenuOpen(false);
                 }}
                 className={`flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs transition cursor-pointer border ${
                   isLight
-                    ? 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100'
-                    : 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20'
                 }`}
               >
-                <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-amber-400" />
-                <span>$10K Demo</span>
+                <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Devnet Faucet</span>
               </button>
             </div>
 
@@ -2728,23 +2262,20 @@ export default function StockPilotApp() {
       </header>
 
       {/* VIEW MODE 1: PRODUCT LANDING PAGE */}
-      {viewMode === 'website' && (
+      {viewMode === 'website' ? (
         <LandingView
           theme={theme}
           campaignPhrase={campaignPhrases[cycleIndex]}
           onLaunchApp={handleLaunchApp}
-          renderMockupContent={() => renderMobileAppContent(true, true)}
+          renderMockupContent={() => renderMobileAppContent(true)}
         />
-      )}
-
-      {/* VIEW MODE 2: DEDICATED ROBO-ADVISOR APP (Clean, Strictly Fixed/Pinned Mobile Viewport) */}
-      {viewMode === 'app' && (
-        <div className="fixed inset-x-0 top-16 bottom-0 sm:relative sm:top-auto sm:bottom-auto sm:h-[calc(100dvh-4rem)] sm:max-h-[calc(100dvh-4rem)] overflow-hidden flex justify-center items-center sm:py-3 px-0 sm:px-4 transition-colors z-10">
+      ) : (
+        <div className="flex-1 flex items-center justify-center p-0 sm:p-6 md:p-8">
           <div
-            className={`w-full max-w-lg h-full flex flex-col border-x sm:border sm:rounded-3xl shadow-2xl relative overflow-hidden transition-colors backdrop-blur-xl ${
+            className={`w-full max-w-lg h-full sm:h-[840px] sm:max-h-[90vh] flex flex-col sm:rounded-3xl border shadow-2xl overflow-hidden transition-colors ${
               isLight
-                ? 'bg-[#F8FAFC]/95 border-slate-200/90 shadow-slate-300/50'
-                : 'bg-[#06080F]/95 border-[#1E293B] shadow-2xl shadow-cyan-950/20'
+                ? 'bg-white border-slate-200 shadow-slate-300/40'
+                : 'bg-[#06080F] border-[#1E293B] shadow-black/80'
             }`}
           >
             {renderMobileAppContent(false)}
@@ -2761,7 +2292,6 @@ export default function StockPilotApp() {
         onConfirmRebalance={handleConfirmRebalance}
         theme={theme}
         publicKey={publicKey}
-        isDemoMode={isDemoMode}
       />
 
       <BuyModal
@@ -2777,8 +2307,6 @@ export default function StockPilotApp() {
         realUsdcBalance={realUsdcBalance}
         solPriceUsd={solPriceUsd}
         theme={theme}
-        isDemoMode={isDemoMode}
-        demoBalanceUsdc={demoBalanceUsdc}
         onBuySuccess={handleBuySuccess}
       />
 
@@ -2830,7 +2358,6 @@ export default function StockPilotApp() {
           }
         }}
         onStartDemo={() => {
-          setIsDemoMode(true);
           setActiveTab('portfolio');
           if (typeof window !== 'undefined') {
             localStorage.setItem('stockpilot_tour_seen', 'true');
@@ -2850,7 +2377,6 @@ export default function StockPilotApp() {
         realUsdcBalance={realUsdcBalance}
         realVaultBalance={realVaultBalance}
         solPriceUsd={solPriceUsd}
-        isDemoMode={isDemoMode}
         connected={connected}
         publicKey={publicKey}
         onWithdrawSuccess={handleWithdrawSuccess}
@@ -2866,7 +2392,6 @@ export default function StockPilotApp() {
         onDeploySuccess={handleDeployCashReserve}
         connected={connected}
         publicKey={publicKey}
-        isDemoMode={isDemoMode}
       />
 
       {/* Real On-Chain Deposit Modal */}
@@ -2884,8 +2409,6 @@ export default function StockPilotApp() {
         realSolBalance={realSolBalance}
         realUsdcBalance={realUsdcBalance}
         solPriceUsd={solPriceUsd}
-        isDemoMode={isDemoMode}
-        demoBalanceUsdc={demoBalanceUsdc}
         connected={connected}
         publicKey={publicKey}
         onDepositSuccess={handleDepositSuccess}
@@ -2896,8 +2419,7 @@ export default function StockPilotApp() {
         isOpen={isFaucetOpen}
         onClose={() => setIsFaucetOpen(false)}
         walletAddress={publicKey?.toBase58()}
-        onSuccessFund={(amount) => {
-          setDemoBalanceUsdc((prev) => prev + amount);
+        onSuccessFund={() => {
           fetchRealBalances();
         }}
       />

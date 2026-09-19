@@ -68,10 +68,10 @@ const TOUR_STEPS = [
   {
     step: 5,
     tag: 'READY FOR LAUNCH',
-    title: 'Choose Your Environment',
+    title: 'Connect & Automate on Devnet',
     description:
-      'Explore risk-free in the $10K Demo Sandbox with simulated funds and market crash scenarios, or connect your Solana wallet to invest on Mainnet with non-custodial peace of mind.',
-    badge: 'Mainnet Ready',
+      'Connect your Solana wallet to manage non-custodial Anchor PDA vaults, claim Devnet test tokens from the faucet, and automate algorithmic equity rebalancing 24/7.',
+    badge: 'Devnet Live',
     icon: faCompass,
     accentColor: '#00D2FF',
   },

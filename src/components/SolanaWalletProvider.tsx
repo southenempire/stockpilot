@@ -8,14 +8,14 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 
 export default function SolanaWalletProvider({ children }: { children: React.ReactNode }) {
-  // Configured for Solana Mainnet Production
-  const network = WalletAdapterNetwork.Mainnet;
+  // Configured for Solana Devnet
+  const network = WalletAdapterNetwork.Devnet;
   
-  // High availability Mainnet Helius RPC endpoint
+  // High availability Devnet Helius RPC endpoint
   const endpoint = useMemo(() => {
     return (
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-      'https://mainnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64'
+      'https://devnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64'
     );
   }, []);
 

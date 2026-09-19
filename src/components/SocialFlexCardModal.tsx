@@ -37,7 +37,7 @@ export default function SocialFlexCardModal({
 
   const isLight = theme === 'light';
 
-  const shareText = `Managing my autonomous tokenized stock index "${strategyName}" 24/7 on @solana Mainnet with @StockPilotSOL! ⚡\n\nReturn: +${pnlPercent}% • <$0.001 gas • Zero market close 📈\n\nAutomate your portfolio on Solana:`;
+  const shareText = `Managing my autonomous tokenized stock index "${strategyName}" 24/7 on @solana Devnet with @StockPilotSOL! ⚡\n\nReturn: +${pnlPercent}% • <$0.001 gas • Zero market close 📈\n\nAutomate your portfolio on Solana:`;
 
   const handleShareTwitter = () => {
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
@@ -87,7 +87,7 @@ export default function SocialFlexCardModal({
           <div className="relative z-10 flex items-center justify-between border-b border-[#1E293B] pb-3">
             <StockPilotLogo size={28} showText={true} theme="dark" />
             <span className="rounded-full bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-[9px] font-bold text-[#00D2FF] font-mono">
-              MAINNET
+              DEVNET
             </span>
           </div>
 

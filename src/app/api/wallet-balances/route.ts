@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
 
-const USDC_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+const USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'; // Official Circle Devnet USDC
 const AAPLX_MINT = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
 
 export async function GET(req: NextRequest) {
@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const owner = new PublicKey(address);
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://mainnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64';
+    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://devnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64';
     const conn = new Connection(rpcUrl, 'confirmed');
 
     // 1. Fetch SOL Balance
