@@ -48,5 +48,9 @@ id.json
 *.db-wal
 *.db-shm
 
+# Promotional & marketing assets
+*promo*
+
+
 # Scratch
 scratch/
