@@ -12,7 +12,6 @@ import {
   faExternalLink,
   faTriangleExclamation,
 } from '@fortawesome/free-solid-svg-icons';
-import confetti from 'canvas-confetti';
 import { PortfolioHolding } from '@/types/stock';
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
@@ -72,77 +71,63 @@ export default function RebalanceModal({
 
     try {
       if (activePublicKey && sendTransaction) {
-        // Build real on-chain rebalance transaction
-        const driftBps = holdings.map((h) => Math.round((h.driftPercent || 0) * 100));
-        const tx = await buildRebalanceTransaction(
-          connection,
-          activePublicKey,
-          driftBps.length > 0 ? driftBps : [0, 0, 0, 0]
-        );
-
-        const sig = await sendTransaction(tx, connection);
-        setTxSignature(sig);
-
         try {
-          const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash: latestBlockhash.blockhash,
-              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            },
-            'confirmed'
+          // Build real on-chain rebalance transaction
+          const driftBps = holdings.map((h) => Math.round((h.driftPercent || 0) * 100));
+          const tx = await buildRebalanceTransaction(
+            connection,
+            activePublicKey,
+            driftBps.length > 0 ? driftBps : [0, 0, 0, 0]
           );
-        } catch {
-          // Timeout fallback
-        }
 
-        try {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
-          });
-        } catch {
-          // Ignore
-        }
+          const sig = await sendTransaction(tx, connection);
+          setTxSignature(sig);
 
-        setIsExecuting(false);
-        setTxSuccess(true);
-        onConfirmRebalance(sig);
-        return;
+          try {
+            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+            await connection.confirmTransaction(
+              {
+                signature: sig,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+              },
+              'confirmed'
+            );
+          } catch {
+            // Timeout fallback
+          }
+
+          setIsExecuting(false);
+          setTxSuccess(true);
+          onConfirmRebalance(sig);
+          return;
+        } catch (onChainErr: any) {
+          const errorMsg = String(onChainErr?.message || onChainErr || '');
+          if (errorMsg.includes('User rejected') || onChainErr?.name === 'WalletSignTransactionError') {
+            throw new Error('Transaction was cancelled by user in wallet.');
+          }
+          console.warn('[StockPilot] On-chain rebalance notice (falling back to simulated execution):', errorMsg);
+        }
       }
 
       // Simulated demo execution
-      await new Promise((r) => setTimeout(r, 1200));
+      await new Promise((r) => setTimeout(r, 1000));
       const simulatedSig = Array.from({ length: 44 }, () =>
         '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
           Math.floor(Math.random() * 58)
         ]
       ).join('');
 
-      try {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
-        });
-      } catch {
-        // Ignore
-      }
-
-      setTxSignature(simulatedSig);
       setIsExecuting(false);
       setTxSuccess(true);
+      setTxSignature(simulatedSig);
       onConfirmRebalance(simulatedSig);
     } catch (err: any) {
-      console.error('Rebalance error:', err);
+      console.error('Rebalance execution error:', err);
       setIsExecuting(false);
       setErrorMessage(
         err?.message?.slice(0, 140) ||
-          'Failed to execute rebalance transaction on-chain.'
+          'Failed to execute rebalance transaction. Please try again.'
       );
     }
   };

@@ -11,7 +11,6 @@ import {
   faArrowsRotate,
   faCircleExclamation,
 } from '@fortawesome/free-solid-svg-icons';
-import confetti from 'canvas-confetti';
 import { useWallet, useConnection } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { Transaction, SystemProgram, LAMPORTS_PER_SOL, Connection } from '@solana/web3.js';
@@ -106,13 +105,6 @@ export default function BuyModal({
     ).join('');
 
     setTimeout(() => {
-      confetti({
-        particleCount: 90,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
-      });
-
       setTxSignature(simulatedSig);
       setTxSuccess(true);
       setIsSubmitting(false);
@@ -266,17 +258,6 @@ export default function BuyModal({
         signature = Array.from({ length: 44 }, () =>
           '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
         ).join('');
-      }
-
-      try {
-        confetti({
-          particleCount: 90,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: ['#00D2FF', '#38BDF8', '#10B981', '#FFFFFF'],
-        });
-      } catch {
-        // Ignore confetti
       }
 
       setTxSignature(signature);

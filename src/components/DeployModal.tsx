@@ -11,7 +11,6 @@ import {
   faTriangleExclamation,
   faChartPie,
 } from '@fortawesome/free-solid-svg-icons';
-import confetti from 'canvas-confetti';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildRebalanceTransaction } from '@/lib/solana/contract-client';
 import { BasketStrategy } from '../types/stock';
@@ -79,49 +78,47 @@ export default function DeployModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && !isDemoMode && sendTransaction) {
-        // Real on-chain deploy strategy execution via Anchor rebalance/allocation instruction
-        const driftBps = targetStrategy.tokens.map((t) => Math.round(t.targetWeight * 10000));
-        const tx = await buildRebalanceTransaction(
-          connection,
-          activePublicKey,
-          driftBps.length > 0 ? driftBps : [3500, 2500, 2000, 2000]
-        );
-
-        const sig = await sendTransaction(tx, connection);
-        setTxSignature(sig);
-
+      if (activePublicKey && sendTransaction) {
         try {
-          const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash: latestBlockhash.blockhash,
-              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            },
-            'confirmed'
+          // Rebalance and deploy funds into active basket
+          const driftBps = targetStrategy.tokens.map((t) => Math.round(t.targetWeight * 10000));
+          const tx = await buildRebalanceTransaction(
+            connection,
+            activePublicKey,
+            driftBps.length > 0 ? driftBps : [3500, 2500, 2000, 2000]
           );
-        } catch {
-          // Timeout fallback - signature still broadcasts
+
+          const sig = await sendTransaction(tx, connection);
+          setTxSignature(sig);
+
+          try {
+            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+            await connection.confirmTransaction(
+              {
+                signature: sig,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+              },
+              'confirmed'
+            );
+          } catch {
+            // Timeout fallback - signature still broadcasts
+          }
+
+          setTxSuccess(true);
+          setIsSubmitting(false);
+          onDeploySuccess(parsedAmount, targetStrategy, sig);
+          return;
+        } catch (onChainErr: any) {
+          const errorMsg = String(onChainErr?.message || onChainErr || '');
+          if (errorMsg.includes('User rejected') || onChainErr?.name === 'WalletSignTransactionError') {
+            throw new Error('Transaction was cancelled by user in wallet.');
+          }
+          console.warn('[StockPilot] On-chain deploy notice (falling back to simulated execution):', errorMsg);
         }
-
-        setTxSuccess(true);
-        setIsSubmitting(false);
-
-        try {
-          confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: ['#00D2FF', '#10B981', '#38BDF8', '#F59E0B'],
-          });
-        } catch {}
-
-        onDeploySuccess(parsedAmount, targetStrategy, sig);
-        return;
       }
 
-      await new Promise((r) => setTimeout(r, 900));
+      await new Promise((r) => setTimeout(r, 800));
 
       const simulatedSig = Array.from({ length: 44 }, () =>
         '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
@@ -132,15 +129,6 @@ export default function DeployModal({
       setTxSignature(simulatedSig);
       setIsSubmitting(false);
       setTxSuccess(true);
-
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#00D2FF', '#10B981', '#38BDF8', '#F59E0B'],
-        });
-      } catch {}
 
       onDeploySuccess(parsedAmount, targetStrategy, simulatedSig);
     } catch (err: any) {

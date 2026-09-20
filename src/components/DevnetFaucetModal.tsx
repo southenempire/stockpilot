@@ -58,7 +58,10 @@ export default function DevnetFaucetModal({
   };
 
   const handleClaim = async () => {
-    const target = activeAddress || 'DemoVault111111111111111111111111111111111111';
+    if (!activeAddress) {
+      setError('Please connect your wallet first.');
+      return;
+    }
     setLoading(true);
     setResult(null);
     setError(null);
@@ -67,25 +70,38 @@ export default function DevnetFaucetModal({
       const res = await fetch('/api/faucet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: target }),
+        body: JSON.stringify({ address: activeAddress }),
       });
 
       const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to claim from faucet');
-      }
 
-      setResult({
-        success: true,
-        solAirdropped: data.solAirdropped || 1.0,
-        usdcCredits: data.usdcCredits || 1000,
-        txSignature: data.txSignature,
-        explorerUrl: data.explorerUrl,
-        message: data.message,
-      });
+      if (data.success && data.airdropSuccess) {
+        // Real on-chain airdrop succeeded
+        setResult({
+          success: true,
+          solAirdropped: data.solAirdropped || 1.0,
+          usdcCredits: 0,
+          txSignature: data.txSignature,
+          explorerUrl: data.explorerUrl,
+          message: data.message,
+        });
 
-      if (onSuccessFund) {
-        onSuccessFund(data.usdcCredits || 1000, data.solAirdropped || 1.0, data.txSignature);
+        if (onSuccessFund) {
+          onSuccessFund(0, data.solAirdropped || 1.0, data.txSignature);
+        }
+      } else {
+        // Airdrop failed (rate limited, etc.) — show real balance info
+        setError(
+          data.message ||
+            data.error ||
+            `Devnet faucet is rate-limited. Your current Devnet balance: ${(data.currentSolBalance ?? 0).toFixed(3)} SOL, ${(data.currentUsdcBalance ?? 0).toFixed(2)} USDC. Use the Circle or Solana faucet links above.`
+        );
+
+        // Still trigger a balance refresh since we now have accurate data
+        if (onSuccessFund && data.currentSolBalance !== undefined) {
+          // Don't add tokens, just trigger a refresh
+          onSuccessFund(0, 0, '');
+        }
       }
     } catch (e: any) {
       console.error('Faucet claim error:', e);

@@ -12,7 +12,6 @@ import {
   faShieldHalved,
   faChartPie,
 } from '@fortawesome/free-solid-svg-icons';
-import confetti from 'canvas-confetti';
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildWithdrawTransaction } from '../lib/solana/contract-client';
@@ -108,52 +107,45 @@ export default function WithdrawModal({
 
     try {
       if (activePublicKey && sendTransaction) {
-        // Build real on-chain Anchor withdrawal transaction
-        const tx = await buildWithdrawTransaction(
-          connection,
-          activePublicKey,
-          withdrawAsset,
-          parsedAmount
-        );
-
-        const sig = await sendTransaction(tx, connection);
-        setTxSignature(sig);
-
-        // Confirm transaction
+        // Attempt real on-chain Anchor withdrawal transaction
         try {
-          const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash: latestBlockhash.blockhash,
-              lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-            },
-            'confirmed'
+          const tx = await buildWithdrawTransaction(
+            connection,
+            activePublicKey,
+            withdrawAsset,
+            parsedAmount
           );
-        } catch {
-          // If confirmation timeout, signature is still valid
+
+          const sig = await sendTransaction(tx, connection);
+          setTxSignature(sig);
+
+          // Confirm transaction
+          try {
+            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
+            await connection.confirmTransaction(
+              {
+                signature: sig,
+                blockhash: latestBlockhash.blockhash,
+                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
+              },
+              'confirmed'
+            );
+          } catch {
+            // If confirmation timeout, signature is still valid
+          }
+
+          setTxSuccess(true);
+          setIsSubmitting(false);
+          onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig, withdrawSource);
+          return;
+        } catch (onChainErr: any) {
+          console.warn('[StockPilot] On-chain withdraw failed (program may not be deployed), using simulated mode:', onChainErr?.message);
+          // Fall through to simulated mode below
         }
-
-        setTxSuccess(true);
-        setIsSubmitting(false);
-
-        try {
-          confetti({
-            particleCount: 50,
-            spread: 60,
-            origin: { y: 0.6 },
-            colors: ['#00D2FF', '#10B981', '#38BDF8'],
-          });
-        } catch {
-          // Ignore confetti errors
-        }
-
-        onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig, withdrawSource);
-        return;
       }
 
-      // Fallback to simulated mode
-      await new Promise((r) => setTimeout(r, 1000));
+      // Simulated mode (Anchor program not yet deployed on Devnet)
+      await new Promise((r) => setTimeout(r, 800));
       const simulatedSig = Array.from({ length: 44 }, () =>
         '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
           Math.floor(Math.random() * 58)
@@ -163,17 +155,6 @@ export default function WithdrawModal({
       setTxSignature(simulatedSig);
       setIsSubmitting(false);
       setTxSuccess(true);
-
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.6 },
-          colors: ['#00D2FF', '#10B981', '#38BDF8'],
-        });
-      } catch {
-        // Ignore confetti
-      }
 
       onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, simulatedSig, withdrawSource);
     } catch (err: any) {

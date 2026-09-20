@@ -166,7 +166,6 @@ export function createDepositInstruction(
   mint: PublicKey,
   ownerTokenAccount: PublicKey,
   vaultTokenAccount: PublicKey,
-  treasuryTokenAccount: PublicKey,
   amount: bigint | number
 ): TransactionInstruction {
   const data = Buffer.concat([DISCRIMINATORS.deposit, encodeU64(amount)]);
@@ -179,7 +178,6 @@ export function createDepositInstruction(
       { pubkey: mint, isSigner: false, isWritable: false },
       { pubkey: ownerTokenAccount, isSigner: false, isWritable: true },
       { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: treasuryTokenAccount, isSigner: false, isWritable: true },
       { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
     ],
     data,
@@ -357,7 +355,6 @@ export async function buildDepositTransaction(
         DEVNET_USDC_MINT,
         userAta,
         vaultAta,
-        treasuryAta,
         totalAmountU64
       )
     );
@@ -405,6 +402,16 @@ export async function buildWithdrawTransaction(
         userPubkey,
         userAta,
         userPubkey,
+        DEVNET_USDC_MINT
+      )
+    );
+
+    // Ensure vault ATA exists
+    tx.add(
+      createAssociatedTokenAccountIdempotentInstruction(
+        userPubkey,
+        vaultAta,
+        vaultPda,
         DEVNET_USDC_MINT
       )
     );

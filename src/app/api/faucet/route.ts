@@ -29,9 +29,35 @@ export async function POST(req: NextRequest) {
 
     const conn = new Connection(HELIUS_RPC, 'confirmed');
 
-    // 1. Attempt on-chain 1 SOL Devnet airdrop
+    // Check current balance first
+    let currentSol = 0;
+    try {
+      const lamports = await conn.getBalance(recipientPubkey);
+      currentSol = lamports / LAMPORTS_PER_SOL;
+    } catch {
+      // ignore
+    }
+
+    // Check USDC balance
+    let currentUsdc = 0;
+    try {
+      const USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU';
+      const tokenProg = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const res = await conn.getParsedTokenAccountsByOwner(recipientPubkey, { programId: tokenProg });
+      for (const item of res.value) {
+        const info = item.account.data.parsed.info;
+        if (info.mint === USDC_MINT) {
+          currentUsdc += info.tokenAmount.uiAmount || 0;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // Attempt on-chain 1 SOL Devnet airdrop via Helius
     let txSig = '';
     let airdropSuccess = false;
+    let airdropError = '';
 
     try {
       txSig = await conn.requestAirdrop(recipientPubkey, 1 * LAMPORTS_PER_SOL);
@@ -45,9 +71,19 @@ export async function POST(req: NextRequest) {
         'confirmed'
       );
       airdropSuccess = true;
-    } catch (airdropErr: any) {
-      console.warn('Helius Devnet requestAirdrop notice:', airdropErr?.message || airdropErr);
-      // Fallback: try official devnet endpoint if Helius has rate limits
+
+      // Re-check balance after successful airdrop
+      try {
+        const lamports = await conn.getBalance(recipientPubkey);
+        currentSol = lamports / LAMPORTS_PER_SOL;
+      } catch {
+        currentSol += 1.0;
+      }
+    } catch (heliusErr: any) {
+      const msg = heliusErr?.message || '';
+      console.warn('[Faucet] Helius airdrop failed:', msg);
+
+      // Try public devnet endpoint as fallback
       try {
         const fallbackConn = new Connection('https://api.devnet.solana.com', 'confirmed');
         txSig = await fallbackConn.requestAirdrop(recipientPubkey, 1 * LAMPORTS_PER_SOL);
@@ -61,42 +97,59 @@ export async function POST(req: NextRequest) {
           'confirmed'
         );
         airdropSuccess = true;
+
+        try {
+          const lamports = await conn.getBalance(recipientPubkey);
+          currentSol = lamports / LAMPORTS_PER_SOL;
+        } catch {
+          currentSol += 1.0;
+        }
       } catch (fallbackErr: any) {
-        console.warn('Fallback Devnet airdrop notice:', fallbackErr?.message || fallbackErr);
+        const fbMsg = fallbackErr?.message || '';
+        console.warn('[Faucet] Public devnet airdrop also failed:', fbMsg);
+
+        if (msg.includes('Rate limit') || msg.includes('429') || fbMsg.includes('429') || fbMsg.includes('limit')) {
+          airdropError = 'rate_limited';
+        } else {
+          airdropError = msg || fbMsg || 'Airdrop request failed';
+        }
       }
     }
 
-    // Generate valid deterministic transaction signature if public faucet is cooling down
-    if (!txSig) {
-      const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-      txSig = Array.from({ length: 64 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    // Return honest result
+    if (airdropSuccess) {
+      return NextResponse.json({
+        success: true,
+        airdropSuccess: true,
+        solAirdropped: 1.0,
+        currentSolBalance: currentSol,
+        currentUsdcBalance: currentUsdc,
+        txSignature: txSig,
+        explorerUrl: `https://explorer.solana.com/tx/${txSig}?cluster=devnet`,
+        message: `Successfully airdropped 1.0 Devnet SOL! Your balance: ${currentSol.toFixed(3)} SOL, ${currentUsdc.toFixed(2)} USDC`,
+      });
+    } else {
+      // Be honest — don't fake a success
+      return NextResponse.json({
+        success: false,
+        airdropSuccess: false,
+        solAirdropped: 0,
+        currentSolBalance: currentSol,
+        currentUsdcBalance: currentUsdc,
+        txSignature: '',
+        explorerUrl: `https://explorer.solana.com/address/${address}?cluster=devnet`,
+        error: airdropError === 'rate_limited'
+          ? `Devnet faucet rate-limited (max 1 SOL/day). Your current balance: ${currentSol.toFixed(3)} SOL, ${currentUsdc.toFixed(2)} USDC. Use Circle Faucet or Solana Web Faucet for more tokens.`
+          : `Airdrop failed: ${airdropError}. Your current balance: ${currentSol.toFixed(3)} SOL, ${currentUsdc.toFixed(2)} USDC.`,
+        message: airdropError === 'rate_limited'
+          ? `Rate limited — you already have ${currentSol.toFixed(3)} SOL & ${currentUsdc.toFixed(2)} USDC on Devnet. Use Circle or Solana faucet links below for more.`
+          : `Airdrop failed. Current balance: ${currentSol.toFixed(3)} SOL, ${currentUsdc.toFixed(2)} USDC.`,
+      });
     }
-
-    // Query current live balance
-    let currentSol = 1.0;
-    try {
-      const lamports = await conn.getBalance(recipientPubkey);
-      currentSol = lamports / LAMPORTS_PER_SOL;
-    } catch {
-      // ignore
-    }
-
-    return NextResponse.json({
-      success: true,
-      airdropSuccess,
-      solAirdropped: 1.0,
-      usdcCredits: 1000,
-      currentSolBalance: currentSol,
-      txSignature: txSig,
-      explorerUrl: `https://explorer.solana.com/tx/${txSig}?cluster=devnet`,
-      message: airdropSuccess
-        ? 'Successfully sent 1.0 Devnet SOL on-chain + credited 1,000 Devnet USDC!'
-        : 'Credited 1,000 Devnet USDC & initialized Devnet gas credits!',
-    });
   } catch (err: any) {
-    console.error('Faucet API fatal error:', err);
+    console.error('[Faucet] Fatal error:', err);
     return NextResponse.json(
-      { error: err?.message || 'Failed to process faucet airdrop' },
+      { success: false, error: err?.message || 'Failed to process faucet airdrop' },
       { status: 500 }
     );
   }

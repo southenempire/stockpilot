@@ -280,6 +280,7 @@ export default function StockPilotApp() {
     if (!connected || !publicKey) {
       setRealSolBalance(null);
       setRealUsdcBalance(null);
+      setRealVaultBalance(null);
       return;
     }
 
@@ -290,14 +291,22 @@ export default function StockPilotApp() {
       if (balRes.ok) {
         const data = await balRes.json();
         if (data.success) {
+          console.log('[StockPilot] Devnet balances fetched:', { sol: data.sol, usdc: data.usdc, vaultSol: data.vaultSol });
           setRealSolBalance(data.sol);
           setRealUsdcBalance(data.usdc);
           setRealVaultBalance(data.vaultSol);
+        } else {
+          console.warn('[StockPilot] Balance API returned success=false:', data);
         }
       } else {
+        console.warn('[StockPilot] Balance API response not ok:', balRes.status);
         // Fallback direct RPC connection
-        const lamports = await connection.getBalance(publicKey);
-        setRealSolBalance(lamports / LAMPORTS_PER_SOL);
+        try {
+          const lamports = await connection.getBalance(publicKey);
+          setRealSolBalance(lamports / LAMPORTS_PER_SOL);
+        } catch (rpcErr) {
+          console.warn('[StockPilot] Direct RPC fallback also failed:', rpcErr);
+        }
       }
 
       // 2. Fetch live SOL/USD price
@@ -313,18 +322,22 @@ export default function StockPilotApp() {
         // ignore CoinGecko rate limits
       }
     } catch (err) {
-      console.warn('Solana balance query error:', err);
-      if (realSolBalance === null) setRealSolBalance(0);
-      if (realUsdcBalance === null) setRealUsdcBalance(0);
-      if (realVaultBalance === null) setRealVaultBalance(0);
+      console.warn('[StockPilot] Solana balance query error:', err);
+      setRealSolBalance((prev) => prev ?? 0);
+      setRealUsdcBalance((prev) => prev ?? 0);
+      setRealVaultBalance((prev) => prev ?? 0);
     } finally {
       setIsLoadingRealBalances(false);
     }
-  }, [connected, publicKey, connection, realSolBalance, realUsdcBalance, realVaultBalance]);
+  }, [connected, publicKey, connection]);
 
+  // Fetch balances on connect and poll every 15 seconds
   useEffect(() => {
     fetchRealBalances();
-  }, [fetchRealBalances]);
+    if (!connected || !publicKey) return;
+    const interval = setInterval(fetchRealBalances, 15000);
+    return () => clearInterval(interval);
+  }, [fetchRealBalances, connected, publicKey]);
 
   // Real live net worth calculations on Solana Devnet (Liquid Wallet + Non-Custodial Vault PDA)
   const liveSolVal = realSolBalance !== null ? realSolBalance * solPriceUsd : 0;
@@ -2310,22 +2323,25 @@ export default function StockPilotApp() {
         realSolBalance={realSolBalance}
         realUsdcBalance={realUsdcBalance}
         onSuccessFund={(amountUsdc, amountSol, txSig) => {
-          setRealUsdcBalance((prev) => (prev ?? 0) + amountUsdc);
-          setRealSolBalance((prev) => (prev ?? 0) + amountSol);
-          setTxHistory((prev) => [
-            {
-              id: `tx_faucet_${Date.now()}`,
-              timestamp: Date.now(),
-              fromAsset: 'Solana Devnet Faucet',
-              toAsset: 'Wallet (USDC & SOL)',
-              amountUsdc,
-              txSignature: txSig,
-              reason: `Funded ${amountSol} Devnet SOL + $${amountUsdc.toLocaleString()} Devnet USDC from Faucet`,
-            },
-            ...prev,
-          ]);
-          setTimeout(fetchRealBalances, 1500);
-          setTimeout(fetchRealBalances, 4500);
+          // Only optimistically update if real tokens were airdropped
+          if (amountSol > 0 || amountUsdc > 0) {
+            setTxHistory((prev) => [
+              {
+                id: `tx_faucet_${Date.now()}`,
+                timestamp: Date.now(),
+                fromAsset: 'Solana Devnet Faucet',
+                toAsset: 'Wallet',
+                amountUsdc: amountSol > 0 ? amountSol * solPriceUsd : amountUsdc,
+                txSignature: txSig,
+                reason: `Airdropped ${amountSol} Devnet SOL from Faucet`,
+              },
+              ...prev,
+            ]);
+          }
+          // Always refresh real on-chain balances
+          fetchRealBalances();
+          setTimeout(fetchRealBalances, 3000);
+          setTimeout(fetchRealBalances, 8000);
         }}
       />
     </div>
