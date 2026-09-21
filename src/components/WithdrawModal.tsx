@@ -54,14 +54,21 @@ export default function WithdrawModal({
   onWithdrawSuccess,
 }: WithdrawModalProps) {
   const { connection } = useConnection();
-  const { publicKey: walletPublicKey, sendTransaction } = useWallet();
+  const { publicKey: walletPublicKey, sendTransaction, signTransaction } = useWallet();
   const activePublicKey = propPublicKey || walletPublicKey;
 
+  // Safe withdrawable SOL from on-chain Vault PDA (maintains ~0.0013 SOL rent-exemption)
+  const safeVaultSol = Math.max(0, (realVaultBalance ?? 0) - 0.002);
+  const vaultReserveUsdTotal =
+    (vaultCashReserveUsdc > 0 ? vaultCashReserveUsdc : 0) + safeVaultSol * (solPriceUsd > 0 ? solPriceUsd : 140);
+
   const [withdrawSource, setWithdrawSource] = useState<'reserve' | 'positions'>(
-    vaultCashReserveUsdc > 0 ? 'reserve' : 'positions'
+    (realVaultBalance ?? 0) > 0.005 || vaultCashReserveUsdc > 0 ? 'reserve' : 'positions'
   );
-  const [withdrawAsset, setWithdrawAsset] = useState<'USDC' | 'SOL'>('USDC');
-  const [amountInput, setAmountInput] = useState('100');
+  const [withdrawAsset, setWithdrawAsset] = useState<'USDC' | 'SOL'>('SOL');
+  const [amountInput, setAmountInput] = useState(() =>
+    safeVaultSol > 0 ? (safeVaultSol >= 0.1 ? '0.1000' : safeVaultSol.toFixed(4)) : '0.0500'
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
@@ -97,15 +104,45 @@ export default function WithdrawModal({
 
   const isLight = theme === 'light';
 
-  // Calculate available based on selected source
-  const sourceAvailableUsdc = (realUsdcBalance ?? 0) + ((realVaultBalance ?? 0) * solPriceUsd);
+  // Active positions basket
+  const positionsUsdc = activePositionsUsdc;
+  const positionsSol = solPriceUsd > 0 ? positionsUsdc / solPriceUsd : 0;
 
-  const availableSol = solPriceUsd > 0 ? sourceAvailableUsdc / solPriceUsd : 0;
-  const maxAvailable = withdrawAsset === 'USDC' ? sourceAvailableUsdc : availableSol;
+  // Available to withdraw based on selected layer and asset
+  let maxAvailable = 0;
+  if (withdrawSource === 'reserve') {
+    maxAvailable = withdrawAsset === 'SOL' ? safeVaultSol : vaultReserveUsdTotal;
+  } else {
+    maxAvailable = withdrawAsset === 'SOL' ? positionsSol : positionsUsdc;
+  }
 
   const parsedAmount = parseFloat(amountInput) || 0;
   const amountUsdcEquivalent =
-    withdrawAsset === 'USDC' ? parsedAmount : parsedAmount * solPriceUsd;
+    withdrawAsset === 'USDC' ? parsedAmount : parsedAmount * (solPriceUsd > 0 ? solPriceUsd : 140);
+
+  const handleToggleSource = (source: 'reserve' | 'positions') => {
+    setWithdrawSource(source);
+    setErrorMessage(null);
+    if (withdrawAsset === 'SOL') {
+      const avail = source === 'reserve' ? safeVaultSol : positionsSol;
+      setAmountInput(avail > 0 ? (avail >= 0.1 ? '0.1000' : avail.toFixed(4)) : '0.0000');
+    } else {
+      const avail = source === 'reserve' ? vaultReserveUsdTotal : positionsUsdc;
+      setAmountInput(avail > 0 ? (avail >= 25 ? '25.00' : avail.toFixed(2)) : '0.00');
+    }
+  };
+
+  const handleToggleAsset = (asset: 'USDC' | 'SOL') => {
+    setWithdrawAsset(asset);
+    setErrorMessage(null);
+    if (asset === 'SOL') {
+      const avail = withdrawSource === 'reserve' ? safeVaultSol : positionsSol;
+      setAmountInput(avail > 0 ? (avail >= 0.1 ? '0.1000' : avail.toFixed(4)) : '0.0000');
+    } else {
+      const avail = withdrawSource === 'reserve' ? vaultReserveUsdTotal : positionsUsdc;
+      setAmountInput(avail > 0 ? (avail >= 25 ? '25.00' : avail.toFixed(2)) : '0.00');
+    }
+  };
 
   const handleSetPercent = (pct: number) => {
     const val = (maxAvailable * pct) / 100;
@@ -119,11 +156,11 @@ export default function WithdrawModal({
     }
     if (maxAvailable <= 0) {
       setErrorMessage(
-        `Selected source balance is $0.00 (${withdrawSource === 'reserve' ? 'Cash Reserve' : 'Active Positions'}).`
+        `Selected source balance is 0 (${withdrawSource === 'reserve' ? 'Vault Reserve' : 'Active Positions'}).`
       );
       return;
     }
-    if (parsedAmount > maxAvailable) {
+    if (parsedAmount > maxAvailable + 0.0001) {
       setErrorMessage(
         `Withdrawal amount exceeds available balance (${withdrawAsset === 'USDC' ? '$' + maxAvailable.toFixed(2) : maxAvailable.toFixed(4) + ' SOL'}).`
       );
@@ -146,64 +183,97 @@ export default function WithdrawModal({
     }
 
     try {
-      if (activePublicKey && sendTransaction) {
-        // Attempt real on-chain Anchor withdrawal transaction
-        try {
-          const tx = await buildWithdrawTransaction(
-            connection,
-            activePublicKey,
-            withdrawAsset,
-            parsedAmount
-          );
-
-          const sig = await sendTransaction(tx, connection);
-          setTxSignature(sig);
-
-          // Confirm transaction
-          try {
-            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-            await connection.confirmTransaction(
-              {
-                signature: sig,
-                blockhash: latestBlockhash.blockhash,
-                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-              },
-              'confirmed'
-            );
-          } catch {
-            // If confirmation timeout, signature is still valid
-          }
-
-          setTxSuccess(true);
-          setIsSubmitting(false);
-          onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig, withdrawSource);
-          return;
-        } catch (onChainErr: any) {
-          console.warn('[StockPilot] On-chain withdraw failed (program may not be deployed), using simulated mode:', onChainErr?.message);
-          // Fall through to simulated mode below
-        }
+      if (!activePublicKey) {
+        throw new Error('Please connect your Solana wallet first.');
       }
 
-      // Simulated mode (Anchor program not yet deployed on Devnet)
-      await new Promise((r) => setTimeout(r, 800));
-      const simulatedSig = Array.from({ length: 44 }, () =>
-        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-          Math.floor(Math.random() * 58)
-        ]
-      ).join('');
-
-      setTxSignature(simulatedSig);
-      setIsSubmitting(false);
-      setTxSuccess(true);
-
-      onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, simulatedSig, withdrawSource);
-    } catch (err: any) {
-      console.error('Withdrawal error:', err);
-      setIsSubmitting(false);
-      setErrorMessage(
-        err?.message?.slice(0, 140) ||
-          'Failed to execute withdrawal transaction. Please try again.'
+      // Build real on-chain Anchor withdrawal transaction
+      const tx = await buildWithdrawTransaction(
+        connection,
+        activePublicKey,
+        withdrawAsset,
+        parsedAmount
       );
+
+      let sig = '';
+
+      if (signTransaction) {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = activePublicKey;
+
+        const signedTx = await signTransaction(tx);
+        const rawBytes = signedTx.serialize();
+
+        try {
+          sig = await connection.sendRawTransaction(rawBytes, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+        } catch (directRpcErr: any) {
+          console.warn('[StockPilot] Direct RPC broadcast failed, using backend relay:', directRpcErr?.message);
+          const relayRes = await fetch('/api/send-tx', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawTransaction: Buffer.from(rawBytes).toString('base64') }),
+          });
+          const relayData = await relayRes.json();
+          if (!relayRes.ok || !relayData.success) {
+            throw new Error(relayData.error || directRpcErr?.message || 'Transaction broadcast failed.');
+          }
+          sig = relayData.signature;
+        }
+
+        // Confirm transaction
+        try {
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Confirmation check note:', cErr?.message);
+        }
+      } else if (sendTransaction) {
+        sig = await sendTransaction(tx, connection, {
+          preflightCommitment: 'confirmed',
+        });
+
+        try {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Confirmation check note:', cErr?.message);
+        }
+      } else {
+        throw new Error('No transaction signing provider found in connected wallet.');
+      }
+
+      setTxSignature(sig);
+      setTxSuccess(true);
+      setIsSubmitting(false);
+      onWithdrawSuccess(amountUsdcEquivalent, withdrawAsset, sig, withdrawSource);
+    } catch (err: any) {
+      console.error('[StockPilot] Withdrawal error:', err);
+      setIsSubmitting(false);
+      const msg = String(err?.message || err || '');
+      if (msg.includes('User rejected') || err?.name === 'WalletSignTransactionError') {
+        setErrorMessage('Transaction was cancelled by user in wallet.');
+      } else if (msg.includes('InsufficientFundsForRent') || msg.includes('insufficient funds for rent')) {
+        setErrorMessage('Cannot withdraw full SOL amount: vault requires ~0.0013 SOL to stay rent-exempt.');
+      } else {
+        setErrorMessage(msg.slice(0, 160) || 'Failed to execute withdrawal transaction.');
+      }
     }
   };
 
@@ -286,7 +356,7 @@ export default function WithdrawModal({
                   : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8]'
               }`}
             >
-              Done
+              View in Portfolio
             </button>
           </div>
         ) : (
@@ -355,7 +425,7 @@ export default function WithdrawModal({
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
                   type="button"
-                  onClick={() => setWithdrawSource('reserve')}
+                  onClick={() => handleToggleSource('reserve')}
                   className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                     withdrawSource === 'reserve'
                       ? isLight
@@ -367,16 +437,16 @@ export default function WithdrawModal({
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-[11px]">Cash Reserve</span>
+                    <span className="font-bold text-[11px]">Vault Reserve</span>
                   </div>
                   <div className="text-[10px] text-emerald-400 font-mono mt-1 font-bold">
-                    ${vaultCashReserveUsdc.toFixed(2)} USDC
+                    {safeVaultSol > 0 ? `${safeVaultSol.toFixed(4)} SOL` : `$${vaultCashReserveUsdc.toFixed(2)}`}
                   </div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setWithdrawSource('positions')}
+                  onClick={() => handleToggleSource('positions')}
                   className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
                     withdrawSource === 'positions'
                       ? isLight
@@ -401,7 +471,20 @@ export default function WithdrawModal({
             <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-black/20 border border-white/5 text-xs font-mono">
               <button
                 type="button"
-                onClick={() => setWithdrawAsset('USDC')}
+                onClick={() => handleToggleAsset('SOL')}
+                className={`py-1.5 rounded-lg font-bold transition cursor-pointer ${
+                  withdrawAsset === 'SOL'
+                    ? isLight
+                      ? 'bg-white text-slate-900 shadow-sm'
+                      : 'bg-[#1E293B] text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                SOL (Vault Native)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleAsset('USDC')}
                 className={`py-1.5 rounded-lg font-bold transition cursor-pointer ${
                   withdrawAsset === 'USDC'
                     ? isLight
@@ -411,19 +494,6 @@ export default function WithdrawModal({
                 }`}
               >
                 USDC (Direct)
-              </button>
-              <button
-                type="button"
-                onClick={() => setWithdrawAsset('SOL')}
-                className={`py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                  withdrawAsset === 'SOL'
-                    ? isLight
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'bg-[#1E293B] text-white'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                SOL (Swap & Send)
               </button>
             </div>
 
@@ -437,14 +507,14 @@ export default function WithdrawModal({
                 <span>Available to Withdraw:</span>
                 <span className={`${isLight ? 'text-slate-900' : 'text-white'} font-bold`}>
                   {withdrawAsset === 'USDC'
-                    ? `$${sourceAvailableUsdc.toFixed(2)}`
-                    : `${availableSol.toFixed(4)} SOL`}
+                    ? `$${maxAvailable.toFixed(2)} USDC`
+                    : `${maxAvailable.toFixed(4)} SOL`}
                 </span>
               </div>
               <div className="flex justify-between text-slate-500 text-[10px]">
                 <span>Source:</span>
                 <span className="text-[#00D2FF] font-semibold">
-                  {withdrawSource === 'reserve' ? 'Vault Cash Reserve (USDC)' : 'Active Strategy Basket'}
+                  {withdrawSource === 'reserve' ? 'Non-Custodial Vault PDA' : 'Active Strategy Basket'}
                 </span>
               </div>
             </div>

@@ -37,12 +37,26 @@ export async function GET(req: NextRequest) {
     const lamports = await conn.getBalance(owner);
     const solBalance = lamports / 1e9;
 
-    // 2. Fetch Vault PDA Balance
+    // 2. Fetch Vault PDA Balance (SOL and USDC)
     let vaultSol = 0;
+    let vaultUsdc = 0;
     try {
       const [vaultPda] = derivePortfolioVaultPda(owner);
       const vLamports = await conn.getBalance(vaultPda);
       vaultSol = vLamports / 1e9;
+
+      const tokenProg = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+      const associatedTokenProg = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+      const [vaultUsdcAta] = PublicKey.findProgramAddressSync(
+        [vaultPda.toBuffer(), tokenProg.toBuffer(), new PublicKey(USDC_MINT).toBuffer()],
+        associatedTokenProg
+      );
+      try {
+        const ataBalance = await conn.getTokenAccountBalance(vaultUsdcAta);
+        vaultUsdc = ataBalance.value.uiAmount || 0;
+      } catch {
+        // Vault USDC ATA may not exist yet
+      }
     } catch (e) {
       console.warn('Vault query error:', e);
     }
@@ -87,6 +101,7 @@ export async function GET(req: NextRequest) {
         sol: solBalance,
         usdc: usdcBalance,
         vaultSol,
+        vaultUsdc,
         stocks,
       },
       {

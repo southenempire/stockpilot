@@ -379,12 +379,30 @@ export async function buildWithdrawTransaction(
   const tx = new Transaction();
 
   if (asset === 'SOL') {
-    const lamports = Math.floor(amount * 1_000_000_000);
+    let lamports = Math.floor(amount * 1_000_000_000);
     const vaultInfo = await connection.getAccountInfo(vaultPda);
+
+    if (!vaultInfo) {
+      throw new Error('Vault account not found on-chain. Deposit funds first.');
+    }
+
+    // Determine rent-exempt minimum so withdrawing doesn't trigger InsufficientFundsForRent
+    const rentExemptMin = await connection.getMinimumBalanceForRentExemption(vaultInfo.data.length || 129);
+    const maxWithdrawableLamports = vaultInfo.lamports > rentExemptMin ? vaultInfo.lamports - rentExemptMin : 0;
+
+    if (maxWithdrawableLamports <= 0) {
+      throw new Error(
+        `Vault balance (${(vaultInfo.lamports / 1e9).toFixed(4)} SOL) is required to maintain Solana rent-exemption (${(rentExemptMin / 1e9).toFixed(4)} SOL). No excess SOL available.`
+      );
+    }
+
+    if (lamports > maxWithdrawableLamports) {
+      lamports = maxWithdrawableLamports;
+    }
 
     // If the vault is an initialized Anchor account, invoke withdraw_sol
     // If it's a pure lamport deposit without anchor init, initialize first so PDA can authorize withdraw_sol
-    if (vaultInfo && vaultInfo.data.length > 0) {
+    if (vaultInfo.data.length > 0) {
       tx.add(createWithdrawSolInstruction(userPubkey, vaultPda, lamports));
     } else {
       tx.add(createInitializeVaultInstruction(userPubkey, vaultPda));

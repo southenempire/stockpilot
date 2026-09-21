@@ -58,7 +58,7 @@ export default function DepositModal({
   onDepositSuccess,
 }: DepositModalProps) {
   const { connection } = useConnection();
-  const { publicKey: walletPublicKey, sendTransaction } = useWallet();
+  const { publicKey: walletPublicKey, sendTransaction, signTransaction } = useWallet();
   const activePublicKey = propPublicKey || walletPublicKey;
 
   const [depositDestination, setDepositDestination] = useState<'reserve' | 'strategy'>('reserve');
@@ -121,72 +121,102 @@ export default function DepositModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && sendTransaction) {
-        try {
-          // Target weights in basis points (10000 = 100%)
-          const targetWeights = holdings.map((h) => Math.round(h.targetWeight * 10000));
-
-          const tx = await buildDepositTransaction(
-            connection,
-            activePublicKey,
-            depositAsset,
-            parsedAmount,
-            strategyId,
-            targetWeights.length > 0 ? targetWeights : [3500, 2500, 2000, 2000]
-          );
-
-          const sig = await sendTransaction(tx, connection);
-          setTxSignature(sig);
-
-          // Confirm
-          try {
-            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-            await connection.confirmTransaction(
-              {
-                signature: sig,
-                blockhash: latestBlockhash.blockhash,
-                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-              },
-              'confirmed'
-            );
-          } catch {
-            // Timeout fallback
-          }
-
-          setTxSuccess(true);
-          setIsSubmitting(false);
-          onDepositSuccess(amountUsdcEquivalent, depositAsset, sig, depositDestination);
-          return;
-        } catch (onChainErr: any) {
-          const errorMsg = String(onChainErr?.message || onChainErr || '');
-          if (errorMsg.includes('User rejected') || onChainErr?.name === 'WalletSignTransactionError') {
-            throw new Error('Transaction was cancelled by user in wallet.');
-          }
-          console.warn('[StockPilot] On-chain deposit notice (falling back to simulated execution):', errorMsg);
-          // Fall through to simulated mode below
-        }
+      if (!activePublicKey) {
+        throw new Error('Please connect your Solana wallet to deposit.');
       }
 
-      // Simulated demo deposit fallback (Anchor program or devnet account fallback)
-      await new Promise((r) => setTimeout(r, 800));
-      const simulatedSig = Array.from({ length: 44 }, () =>
-        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-          Math.floor(Math.random() * 58)
-        ]
-      ).join('');
+      // Target weights in basis points (10000 = 100%)
+      const targetWeights = holdings.map((h) => Math.round(h.targetWeight * 10000));
 
-      setTxSignature(simulatedSig);
-      setIsSubmitting(false);
+      const tx = await buildDepositTransaction(
+        connection,
+        activePublicKey,
+        depositAsset,
+        parsedAmount,
+        strategyId,
+        targetWeights.length > 0 ? targetWeights : [3500, 2500, 2000, 2000]
+      );
+
+      let sig = '';
+
+      if (signTransaction) {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = activePublicKey;
+
+        const signedTx = await signTransaction(tx);
+        const rawBytes = signedTx.serialize();
+
+        try {
+          sig = await connection.sendRawTransaction(rawBytes, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+        } catch (directRpcErr: any) {
+          console.warn('[StockPilot] Direct RPC deposit broadcast failed, using backend relay:', directRpcErr?.message);
+          const relayRes = await fetch('/api/send-tx', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawTransaction: Buffer.from(rawBytes).toString('base64') }),
+          });
+          const relayData = await relayRes.json();
+          if (!relayRes.ok || !relayData.success) {
+            throw new Error(relayData.error || directRpcErr?.message || 'Deposit broadcast failed.');
+          }
+          sig = relayData.signature;
+        }
+
+        // Confirm
+        try {
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Deposit confirmation check note:', cErr?.message);
+        }
+      } else if (sendTransaction) {
+        sig = await sendTransaction(tx, connection, {
+          preflightCommitment: 'confirmed',
+        });
+
+        try {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Deposit confirmation check note:', cErr?.message);
+        }
+      } else {
+        throw new Error('No transaction signing provider found in connected wallet.');
+      }
+
+      setTxSignature(sig);
       setTxSuccess(true);
-
-      onDepositSuccess(amountUsdcEquivalent, depositAsset, simulatedSig, depositDestination);
+      setIsSubmitting(false);
+      onDepositSuccess(amountUsdcEquivalent, depositAsset, sig, depositDestination);
     } catch (err: any) {
       console.error('Deposit error:', err);
       setIsSubmitting(false);
-      setErrorMessage(
-        err?.message?.slice(0, 140) ||
-          'Failed to execute deposit transaction. Please try again.'
-      );
+      const msg = String(err?.message || err || '');
+      if (msg.includes('User rejected') || err?.name === 'WalletSignTransactionError') {
+        setErrorMessage('Transaction was cancelled by user in wallet.');
+      } else {
+        setErrorMessage(
+          msg.slice(0, 140) ||
+            'Failed to execute deposit transaction. Please try again.'
+        );
+      }
     }
   };
 
@@ -269,7 +299,7 @@ export default function DepositModal({
                   : 'bg-[#00D2FF] text-[#06080F] hover:bg-[#38BDF8]'
               }`}
             >
-              Done
+              View in Portfolio
             </button>
           </div>
         ) : (

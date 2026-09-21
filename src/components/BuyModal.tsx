@@ -38,6 +38,7 @@ interface BuyModalProps {
     paymentAmount: number;
     txSignature: string;
   }) => void;
+  onViewPortfolio?: () => void;
 }
 
 export default function BuyModal({
@@ -52,6 +53,7 @@ export default function BuyModal({
   isDemoMode = false,
   demoBalanceUsdc = 10000,
   onBuySuccess,
+  onViewPortfolio,
 }: BuyModalProps) {
   const isLight = theme === 'light';
   const { setVisible: openWalletModal } = useWalletModal();
@@ -357,7 +359,12 @@ export default function BuyModal({
               )}
 
               <button
-                onClick={handleClose}
+                onClick={() => {
+                  handleClose();
+                  if (onViewPortfolio) {
+                    onViewPortfolio();
+                  }
+                }}
                 className="w-full py-3 rounded-xl bg-[#00D2FF] text-[#06080F] font-bold text-xs hover:bg-[#38BDF8] transition cursor-pointer"
               >
                 View in Portfolio

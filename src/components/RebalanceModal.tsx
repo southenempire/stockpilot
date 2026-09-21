@@ -37,7 +37,7 @@ export default function RebalanceModal({
   publicKey: propPublicKey,
 }: RebalanceModalProps) {
   const { connection } = useConnection();
-  const { publicKey: walletPublicKey, sendTransaction } = useWallet();
+  const { publicKey: walletPublicKey, sendTransaction, signTransaction } = useWallet();
   const activePublicKey = propPublicKey || walletPublicKey;
 
   const [isExecuting, setIsExecuting] = useState(false);
@@ -70,65 +70,100 @@ export default function RebalanceModal({
     setErrorMessage(null);
 
     try {
-      if (activePublicKey && sendTransaction) {
-        try {
-          // Build real on-chain rebalance transaction
-          const driftBps = holdings.map((h) => Math.round((h.driftPercent || 0) * 100));
-          const tx = await buildRebalanceTransaction(
-            connection,
-            activePublicKey,
-            driftBps.length > 0 ? driftBps : [0, 0, 0, 0]
-          );
-
-          const sig = await sendTransaction(tx, connection);
-          setTxSignature(sig);
-
-          try {
-            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-            await connection.confirmTransaction(
-              {
-                signature: sig,
-                blockhash: latestBlockhash.blockhash,
-                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-              },
-              'confirmed'
-            );
-          } catch {
-            // Timeout fallback
-          }
-
-          setIsExecuting(false);
-          setTxSuccess(true);
-          onConfirmRebalance(sig);
-          return;
-        } catch (onChainErr: any) {
-          const errorMsg = String(onChainErr?.message || onChainErr || '');
-          if (errorMsg.includes('User rejected') || onChainErr?.name === 'WalletSignTransactionError') {
-            throw new Error('Transaction was cancelled by user in wallet.');
-          }
-          console.warn('[StockPilot] On-chain rebalance notice (falling back to simulated execution):', errorMsg);
-        }
+      if (!activePublicKey) {
+        throw new Error('Please connect your Solana wallet to rebalance.');
       }
 
-      // Simulated demo execution
-      await new Promise((r) => setTimeout(r, 1000));
-      const simulatedSig = Array.from({ length: 44 }, () =>
-        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-          Math.floor(Math.random() * 58)
-        ]
-      ).join('');
+      // Build real on-chain rebalance transaction
+      const driftBps = holdings.map((h) => Math.round((h.driftPercent || 0) * 100));
+      const tx = await buildRebalanceTransaction(
+        connection,
+        activePublicKey,
+        driftBps.length > 0 ? driftBps : [0, 0, 0, 0]
+      );
+
+      let sig = '';
+
+      if (signTransaction) {
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = activePublicKey;
+
+        const signedTx = await signTransaction(tx);
+        const rawBytes = signedTx.serialize();
+
+        try {
+          sig = await connection.sendRawTransaction(rawBytes, {
+            skipPreflight: false,
+            preflightCommitment: 'confirmed',
+          });
+        } catch (directRpcErr: any) {
+          console.warn('[StockPilot] Direct RPC rebalance broadcast failed, using backend relay:', directRpcErr?.message);
+          const relayRes = await fetch('/api/send-tx', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rawTransaction: Buffer.from(rawBytes).toString('base64') }),
+          });
+          const relayData = await relayRes.json();
+          if (!relayRes.ok || !relayData.success) {
+            throw new Error(relayData.error || directRpcErr?.message || 'Rebalance broadcast failed.');
+          }
+          sig = relayData.signature;
+        }
+
+        // Confirm
+        try {
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Rebalance confirmation check note:', cErr?.message);
+        }
+      } else if (sendTransaction) {
+        sig = await sendTransaction(tx, connection, {
+          preflightCommitment: 'confirmed',
+        });
+
+        try {
+          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+          await connection.confirmTransaction(
+            {
+              signature: sig,
+              blockhash,
+              lastValidBlockHeight,
+            },
+            'confirmed'
+          );
+        } catch (cErr: any) {
+          console.warn('[StockPilot] Rebalance confirmation check note:', cErr?.message);
+        }
+      } else {
+        throw new Error('No transaction signing provider found in connected wallet.');
+      }
 
       setIsExecuting(false);
       setTxSuccess(true);
-      setTxSignature(simulatedSig);
-      onConfirmRebalance(simulatedSig);
+      setTxSignature(sig);
+      onConfirmRebalance(sig);
     } catch (err: any) {
       console.error('Rebalance execution error:', err);
       setIsExecuting(false);
-      setErrorMessage(
-        err?.message?.slice(0, 140) ||
-          'Failed to execute rebalance transaction. Please try again.'
-      );
+      const msg = String(err?.message || err || '');
+      if (msg.includes('User rejected') || err?.name === 'WalletSignTransactionError') {
+        setErrorMessage('Transaction was cancelled by user in wallet.');
+      } else if (msg.includes('RebalanceCooldownActive') || msg.includes('6002')) {
+        setErrorMessage('Rebalance cooldown is still active. Please wait for the 300-second window to expire.');
+      } else {
+        setErrorMessage(
+          msg.slice(0, 140) ||
+            'Failed to execute rebalance transaction. Please try again.'
+        );
+      }
     }
   };
 

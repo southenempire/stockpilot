@@ -291,10 +291,15 @@ export default function StockPilotApp() {
       if (balRes.ok) {
         const data = await balRes.json();
         if (data.success) {
-          console.log('[StockPilot] Devnet balances fetched:', { sol: data.sol, usdc: data.usdc, vaultSol: data.vaultSol });
+          console.log('[StockPilot] Devnet balances fetched:', { sol: data.sol, usdc: data.usdc, vaultSol: data.vaultSol, vaultUsdc: data.vaultUsdc });
           setRealSolBalance(data.sol);
           setRealUsdcBalance(data.usdc);
           setRealVaultBalance(data.vaultSol);
+          const currentPrice = solPriceUsd > 0 ? solPriceUsd : 140;
+          const liveVaultReserveUsd = (data.vaultUsdc || 0) + ((data.vaultSol || 0) * currentPrice);
+          if (liveVaultReserveUsd > 0) {
+            setVaultCashReserveUsdc(liveVaultReserveUsd);
+          }
         } else {
           console.warn('[StockPilot] Balance API returned success=false:', data);
         }
@@ -653,7 +658,10 @@ export default function StockPilotApp() {
     }
 
     setIsDepositOpen(false);
+    setActiveTab('portfolio');
+    setViewMode('app');
     fetchRealBalances();
+    setTimeout(() => fetchRealBalances(), 2500);
 
     // Record deposit to backend database
     if (publicKey) {
@@ -682,15 +690,22 @@ export default function StockPilotApp() {
 
     if (source === 'reserve') {
       setVaultCashReserveUsdc((c) => Math.max(0, c - amountUsdc));
+      if (asset === 'SOL') {
+        const solVal = solPriceUsd > 0 ? amountUsdc / solPriceUsd : 0;
+        setRealVaultBalance((prev) => (prev !== null ? Math.max(0, prev - solVal) : null));
+        setRealSolBalance((prev) => (prev !== null ? prev + solVal : null));
+      } else {
+        setRealUsdcBalance((prev) => (prev !== null ? prev + amountUsdc : null));
+      }
       setTxHistory((prev) => [
         {
           id: `tx_wdr_${Date.now()}`,
           timestamp: Date.now(),
-          fromAsset: 'Vault Cash Reserve (USDC)',
+          fromAsset: 'Vault Cash Reserve',
           toAsset: `${asset} (Wallet)`,
           amountUsdc,
           txSignature: txSig,
-          reason: `Withdrew $${amountUsdc.toFixed(2)} from Cash Reserve back to wallet`,
+          reason: `Withdrew $${amountUsdc.toFixed(2)} (${asset}) from Vault PDA back to wallet`,
         },
         ...prev,
       ]);
@@ -728,7 +743,10 @@ export default function StockPilotApp() {
     }
 
     setIsWithdrawOpen(false);
+    setActiveTab('portfolio');
+    setViewMode('app');
     fetchRealBalances();
+    setTimeout(() => fetchRealBalances(), 2500);
 
     // Record withdrawal to backend database
     if (publicKey) {
@@ -847,6 +865,11 @@ export default function StockPilotApp() {
         ...prev,
       ]);
     }
+
+    setActiveTab('portfolio');
+    setViewMode('app');
+    fetchRealBalances();
+    setTimeout(() => fetchRealBalances(), 2500);
   };
 
   // Natural Language AI Synthesis
@@ -2201,6 +2224,16 @@ export default function StockPilotApp() {
           setIsBuyModalOpen(false);
           setBuyTargetBasket(null);
           setBuyTargetStock(null);
+        }}
+        onViewPortfolio={() => {
+          setIsBuyModalOpen(false);
+          setBuyTargetBasket(null);
+          setBuyTargetStock(null);
+          setActiveTab('portfolio');
+          setViewMode('app');
+          if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }
         }}
         targetBasket={buyTargetBasket}
         targetStock={buyTargetStock}
