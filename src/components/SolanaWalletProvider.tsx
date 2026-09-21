@@ -12,10 +12,14 @@ export default function SolanaWalletProvider({ children }: { children: React.Rea
   const network = WalletAdapterNetwork.Devnet;
   
   const endpoint = useMemo(() => {
-    return (
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-      clusterApiUrl(network)
-    );
+    let url = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network);
+    if (url.includes('mainnet')) {
+      url = url.replace('mainnet.helius-rpc.com', 'devnet.helius-rpc.com');
+      if (url.includes('mainnet')) {
+        url = clusterApiUrl(network);
+      }
+    }
+    return url;
   }, [network]);
 
   const wallets = useMemo(

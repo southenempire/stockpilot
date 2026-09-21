@@ -15,10 +15,19 @@ export async function GET(req: NextRequest) {
 
   try {
     const owner = new PublicKey(address);
-    const rpcUrl =
+    let rpcUrl =
       process.env.HELIUS_DEVNET_RPC_URL ||
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
       'https://api.devnet.solana.com';
+
+    // Enforce Devnet RPC (convert any lingering mainnet env URLs to devnet)
+    if (rpcUrl.includes('mainnet')) {
+      rpcUrl = rpcUrl.replace('mainnet.helius-rpc.com', 'devnet.helius-rpc.com');
+      if (rpcUrl.includes('mainnet')) {
+        rpcUrl = 'https://api.devnet.solana.com';
+      }
+    }
+
     const conn = new Connection(rpcUrl, 'confirmed');
 
     // 1. Fetch SOL Balance

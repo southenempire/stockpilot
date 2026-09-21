@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 
-const DEVNET_RPC_URL =
+let rawRpcUrl =
   process.env.HELIUS_DEVNET_RPC_URL ??
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??
   "https://api.devnet.solana.com";
+
+if (rawRpcUrl.includes("mainnet")) {
+  rawRpcUrl = rawRpcUrl.replace("mainnet.helius-rpc.com", "devnet.helius-rpc.com");
+  if (rawRpcUrl.includes("mainnet")) {
+    rawRpcUrl = "https://api.devnet.solana.com";
+  }
+}
+
+const DEVNET_RPC_URL = rawRpcUrl;
 
 const DEVNET_SOL_LAMPORTS = 1_000_000_000;
 
