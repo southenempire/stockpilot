@@ -113,6 +113,13 @@ Most on-chain vaults force user deposits directly into active market exposure on
         └─────────────────────────────┘ └─────────────────────────────┘
 ```
 
+### Hybrid Architecture Disclosure
+StockPilot operates on a hybrid settlement model:
+- **Anchor Program (`CsiP2ZWy...`)**: Deterministic on-chain state engine, PDA vault custody (`[b"stockpilot_vault", owner]`), 15 bps treasury fee split, and 300s cooldown lock enforcement via Clock sysvar.
+- **Client / SDK Layer**: Pyth Hermes price feed ingestion and Jupiter V6 route execution.
+
+*Note: The built-in faucet supplies Devnet SOL for transaction fees. For devnet token testing, use pre-funded devnet USDC mint accounts or Circle's official faucet.*
+
 ---
 
 ## Smart Contract Primitives
@@ -180,7 +187,9 @@ npm install
 Create a `.env.local` file in the root directory:
 ```bash
 NEXT_PUBLIC_HELIUS_API_KEY=your_helius_api_key
-NEXT_PUBLIC_SOLANA_RPC_URL=https://mainnet.helius-rpc.com/?api-key=your_helius_api_key
+HELIUS_DEVNET_RPC_URL=https://devnet.helius-rpc.com/?api-key=your_helius_api_key
+# Falls back to https://api.devnet.solana.com if not provided
+NEXT_PUBLIC_SOLANA_RPC_URL=https://devnet.helius-rpc.com/?api-key=your_helius_api_key
 NEXT_PUBLIC_TREASURY_WALLET_ADDRESS=2KtVKiQCMbHrsdAPyjQVVnccpgvt3Y8ggrjgxXCSPyEo
 NEXT_PUBLIC_PRIVY_APP_ID=your_privy_app_id
 PRIVY_APP_SECRET=your_privy_secret

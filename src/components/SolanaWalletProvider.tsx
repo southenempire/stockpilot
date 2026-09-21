@@ -11,13 +11,12 @@ export default function SolanaWalletProvider({ children }: { children: React.Rea
   // Configured for Solana Devnet
   const network = WalletAdapterNetwork.Devnet;
   
-  // High availability Devnet Helius RPC endpoint
   const endpoint = useMemo(() => {
     return (
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
-      'https://devnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64'
+      clusterApiUrl(network)
     );
-  }, []);
+  }, [network]);
 
   const wallets = useMemo(
     () => [

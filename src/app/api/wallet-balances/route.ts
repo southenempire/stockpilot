@@ -15,7 +15,10 @@ export async function GET(req: NextRequest) {
 
   try {
     const owner = new PublicKey(address);
-    const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://devnet.helius-rpc.com/?api-key=afac2f74-f3f4-4bd2-9e0e-f53695767c64';
+    const rpcUrl =
+      process.env.HELIUS_DEVNET_RPC_URL ||
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+      'https://api.devnet.solana.com';
     const conn = new Connection(rpcUrl, 'confirmed');
 
     // 1. Fetch SOL Balance

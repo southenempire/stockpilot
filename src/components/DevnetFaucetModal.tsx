@@ -75,37 +75,31 @@ export default function DevnetFaucetModal({
 
       const data = await res.json();
 
-      if (data.success && data.airdropSuccess) {
-        // Real on-chain airdrop succeeded
+      if (res.ok && data.success) {
+        // Real on-chain Devnet SOL airdrop succeeded
         setResult({
           success: true,
-          solAirdropped: data.solAirdropped || 1.0,
+          solAirdropped: 1.0,
           usdcCredits: 0,
-          txSignature: data.txSignature,
+          txSignature: data.signature || data.txSignature,
           explorerUrl: data.explorerUrl,
-          message: data.message,
+          message: data.message || 'Successfully airdropped 1.0 Devnet SOL to your wallet!',
         });
 
         if (onSuccessFund) {
-          onSuccessFund(0, data.solAirdropped || 1.0, data.txSignature);
+          onSuccessFund(0, 1.0, data.signature || data.txSignature);
         }
       } else {
-        // Airdrop failed (rate limited, etc.) — show real balance info
+        // Airdrop failed / rate limited
         setError(
           data.message ||
             data.error ||
-            `Devnet faucet is rate-limited. Your current Devnet balance: ${(data.currentSolBalance ?? 0).toFixed(3)} SOL, ${(data.currentUsdcBalance ?? 0).toFixed(2)} USDC. Use the Circle or Solana faucet links above.`
+            'Devnet faucet request was rate-limited by the RPC network. Please use the Solana Web Faucet or Circle Faucet links above.'
         );
-
-        // Still trigger a balance refresh since we now have accurate data
-        if (onSuccessFund && data.currentSolBalance !== undefined) {
-          // Don't add tokens, just trigger a refresh
-          onSuccessFund(0, 0, '');
-        }
       }
     } catch (e: any) {
       console.error('Faucet claim error:', e);
-      setError(e?.message || 'Devnet airdrop request failed. Please try again.');
+      setError(e?.message || 'Devnet airdrop request failed. Please use the faucet links above.');
     } finally {
       setLoading(false);
     }
@@ -290,16 +284,20 @@ export default function DevnetFaucetModal({
             {loading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-black" />
-                <span>Requesting Devnet...</span>
+                <span>Requesting 1 SOL...</span>
               </>
             ) : (
               <>
                 <Sparkles className="h-3.5 w-3.5 text-black" />
-                <span>1-Tap Devnet Airdrop</span>
+                <span>Claim Devnet SOL (1 SOL)</span>
               </>
             )}
           </button>
         </div>
+
+        <p className="mt-2.5 text-center text-[10px] text-zinc-500">
+          Built-in airdrop supplies Devnet SOL for gas & fees. For Devnet USDC, use Circle&apos;s official faucet link above.
+        </p>
       </div>
     </div>
   );
