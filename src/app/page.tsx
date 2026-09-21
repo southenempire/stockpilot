@@ -916,53 +916,40 @@ export default function StockPilotApp() {
           : 'bg-[#06080F] text-slate-100 selection:bg-[#00D2FF]/20 selection:text-[#00D2FF]'
       }`}
     >
-      {/* Mobile Top Bar - Fixed at top, never scrolls away */}
-      <div
-        className={`flex items-center justify-between border-b px-4 py-3 backdrop-blur-md shrink-0 z-30 transition-colors ${
-          isLight ? 'bg-white/95 border-slate-200 shadow-sm' : 'bg-[#080D18]/95 border-[#1E293B]'
-        }`}
-      >
-        <div className="flex items-center gap-2 shrink-0">
-          <StockPilotLogo size={24} showText={false} theme={theme} />
-          <span className={`font-extrabold text-sm tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            Stock<span className="text-[#00D2FF]">Pilot</span>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          <div
-            className="rounded-lg border px-2.5 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1.5 bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-            title="Active Network: Solana Devnet"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>● Solana Devnet</span>
+      {/* Mockup Top Bar - Rendered only inside landing page preview, eliminated when full app is active to prevent duplicate headers */}
+      {isInsideMockup && (
+        <div
+          className={`flex items-center justify-between border-b px-4 py-3 backdrop-blur-md shrink-0 z-30 transition-colors ${
+            isLight ? 'bg-white/95 border-slate-200 shadow-sm' : 'bg-[#080D18]/95 border-[#1E293B]'
+          }`}
+        >
+          <div className="flex items-center gap-2 shrink-0">
+            <StockPilotLogo size={24} showText={false} theme={theme} />
+            <span className={`font-extrabold text-sm tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              Stock<span className="text-[#00D2FF]">Pilot</span>
+            </span>
           </div>
 
-          <button
-            onClick={() => setIsFaucetOpen(true)}
-            className="rounded-lg border px-2 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1 bg-[#00D2FF]/10 border-[#00D2FF]/30 text-[#00D2FF] hover:bg-[#00D2FF]/20 transition cursor-pointer"
-            title="Open Solana Devnet Faucet"
-          >
-            <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5" />
-            <span>Faucet</span>
-          </button>
-
-          {connected && publicKey ? (
-            <button
-              onClick={() => disconnect()}
-              className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition cursor-pointer shrink-0 border ${
-                isLight
-                  ? 'bg-sky-50 border-sky-200 text-sky-800 hover:bg-sky-100'
-                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-              }`}
-              title="Connected (Click to Disconnect)"
+          <div className="flex items-center gap-2 shrink-0">
+            <div
+              className="rounded-lg border px-2.5 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1.5 bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+              title="Active Network: Solana Devnet"
             >
-              <FontAwesomeIcon icon={faWallet} className="w-2.5 h-2.5 text-[#00D2FF]" />
-              <span>{publicKey.toBase58().slice(0, 4)}...{publicKey.toBase58().slice(-3)}</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>● Solana Devnet</span>
+            </div>
+
+            <button
+              onClick={() => setIsFaucetOpen(true)}
+              className="rounded-lg border px-2 py-1 text-[10px] font-mono font-bold shrink-0 flex items-center gap-1 bg-[#00D2FF]/10 border-[#00D2FF]/30 text-[#00D2FF] hover:bg-[#00D2FF]/20 transition cursor-pointer"
+              title="Open Solana Devnet Faucet"
+            >
+              <FontAwesomeIcon icon={faBolt} className="w-2.5 h-2.5" />
+              <span>Faucet</span>
             </button>
-          ) : null}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Scrollable Content */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full p-4 space-y-4 pb-6 overscroll-contain">
@@ -1921,7 +1908,7 @@ export default function StockPilotApp() {
                   }`}
                 >
                   <FontAwesomeIcon icon={faChevronLeft} className="w-3 h-3" />
-                  <span>Overview</span>
+                  <span>Website</span>
                 </button>
               )}
 
@@ -1938,6 +1925,20 @@ export default function StockPilotApp() {
                   >
                     <FontAwesomeIcon icon={faRightFromBracket} className="w-3 h-3" />
                   </button>
+                </div>
+              ) : connected ? (
+                <div className="scale-95">
+                  <WalletMultiButton
+                    style={{
+                      backgroundColor: isLight ? '#0F172A' : '#101929',
+                      border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
+                      borderRadius: '0.75rem',
+                      height: '36px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#FFFFFF',
+                    }}
+                  />
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
@@ -2146,6 +2147,22 @@ export default function StockPilotApp() {
                   >
                     Sign Out
                   </button>
+                </div>
+              ) : connected ? (
+                <div className="flex justify-center w-full">
+                  <WalletMultiButton
+                    style={{
+                      width: '100%',
+                      justifyContent: 'center',
+                      backgroundColor: isLight ? '#0F172A' : '#101929',
+                      border: isLight ? '1px solid #CBD5E1' : '1px solid #1E293B',
+                      borderRadius: '0.75rem',
+                      height: '38px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: '#FFFFFF',
+                    }}
+                  />
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
