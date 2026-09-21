@@ -1807,7 +1807,7 @@ export default function StockPilotApp() {
           priority
           sizes="100vw"
           className={`object-cover object-center transition-all duration-700 ${
-            isLight ? 'opacity-40' : 'opacity-45'
+            isLight ? 'opacity-40' : 'opacity-65'
           }`}
         />
       </div>
@@ -1817,7 +1817,7 @@ export default function StockPilotApp() {
         className={`fixed inset-0 pointer-events-none z-0 transition-colors duration-700 ${
           isLight
             ? 'bg-gradient-to-b from-[#F8FAFC]/25 via-[#F8FAFC]/50 to-[#F8FAFC]/80'
-            : 'bg-gradient-to-b from-[#06080F]/65 via-[#06080F]/80 to-[#06080F]/95'
+            : 'bg-gradient-to-b from-[#06080F]/30 via-[#06080F]/50 to-[#06080F]/75'
         }`}
       />
 
