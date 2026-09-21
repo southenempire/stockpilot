@@ -911,9 +911,13 @@ export default function StockPilotApp() {
       className={`w-full flex flex-col transition-colors relative overflow-hidden ${
         isInsideMockup ? 'h-[580px] max-h-[580px]' : 'h-full flex-1'
       } ${
-        isLight
-          ? 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
-          : 'bg-[#06080F] text-slate-100 selection:bg-[#00D2FF]/20 selection:text-[#00D2FF]'
+        isInsideMockup
+          ? isLight
+            ? 'bg-[#F8FAFC] text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
+            : 'bg-[#06080F] text-slate-100 selection:bg-[#00D2FF]/20 selection:text-[#00D2FF]'
+          : isLight
+            ? 'bg-[#F8FAFC]/80 text-slate-900 selection:bg-sky-500/20 selection:text-sky-800'
+            : 'bg-transparent text-slate-100 selection:bg-[#00D2FF]/20 selection:text-[#00D2FF]'
       }`}
     >
       {/* Mockup Top Bar - Rendered only inside landing page preview, eliminated when full app is active to prevent duplicate headers */}
@@ -966,12 +970,22 @@ export default function StockPilotApp() {
             >
               {/* Anime Styled Cyber Warrior Mascot at Right Side */}
               <div className="absolute right-0 top-0 bottom-0 w-36 sm:w-48 pointer-events-none overflow-hidden select-none z-0">
-                <Image
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
                   src="/anime-warrior.jpg"
-                  alt="Anime Pilot Warrior"
-                  fill
-                  sizes="(max-width: 640px) 144px, 192px"
-                  className="object-cover object-top opacity-35 dark:opacity-50 transition-all duration-500 group-hover:scale-105 group-hover:opacity-65"
+                  alt=""
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'top',
+                    opacity: isLight ? 0.35 : 0.5,
+                    transition: 'opacity 0.5s, transform 0.5s',
+                  }}
+                  className="group-hover:opacity-65 group-hover:scale-105"
                 />
                 <div
                   className={`absolute inset-0 ${
@@ -2215,8 +2229,8 @@ export default function StockPilotApp() {
           <div
             className={`w-full max-w-lg h-full sm:h-[840px] sm:max-h-[90vh] flex flex-col sm:rounded-3xl border shadow-2xl overflow-hidden transition-colors ${
               isLight
-                ? 'bg-white border-slate-200 shadow-slate-300/40'
-                : 'bg-[#06080F] border-[#1E293B] shadow-black/80'
+                ? 'bg-white/80 border-slate-200 shadow-slate-300/40 backdrop-blur-sm'
+                : 'bg-[#06080F]/60 border-[#1E293B] shadow-black/80 backdrop-blur-md'
             }`}
           >
             {renderMobileAppContent(false)}

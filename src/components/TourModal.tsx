@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import Image from 'next/image';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faXmark,
@@ -131,12 +130,20 @@ export default function TourModal({
         <div className="relative h-44 w-full overflow-hidden bg-gradient-to-b from-[#06080F] to-[#0E1524] border-b border-[#1E293B]">
           {/* Cyber City & Warrior Image */}
           <div className="absolute right-0 top-0 bottom-0 w-48 pointer-events-none select-none">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/anime-warrior.jpg"
-              alt="StockPilot Warrior Guide"
-              fill
-              priority
-              className="object-cover object-top opacity-60"
+              alt=""
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'top',
+                opacity: 0.6,
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-[#06080F] via-[#06080F]/60 to-transparent" />
           </div>
