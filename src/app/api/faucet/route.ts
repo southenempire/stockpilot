@@ -16,10 +16,44 @@ if (rawRpcUrl.includes("mainnet")) {
 }
 
 const DEVNET_RPC_URL = rawRpcUrl;
-
 const DEVNET_SOL_LAMPORTS = 1_000_000_000;
 
+// --- IP Rate Limiter: 1 airdrop per IP per 60 seconds ---
+const RATE_LIMIT_WINDOW_MS = 60_000; // 60 seconds
+const ipLastRequest = new Map<string, number>();
+
+// Periodically clean up stale entries so Map doesn't grow forever
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, ts] of ipLastRequest.entries()) {
+    if (now - ts > RATE_LIMIT_WINDOW_MS * 2) ipLastRequest.delete(ip);
+  }
+}, RATE_LIMIT_WINDOW_MS * 5);
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return "unknown";
+}
+
 export async function POST(request: Request) {
+  // Rate-limit check
+  const ip = getClientIp(request);
+  const now = Date.now();
+  const lastTs = ipLastRequest.get(ip);
+
+  if (lastTs && now - lastTs < RATE_LIMIT_WINDOW_MS) {
+    const secondsLeft = Math.ceil((RATE_LIMIT_WINDOW_MS - (now - lastTs)) / 1000);
+    return NextResponse.json(
+      {
+        error: "Rate limited",
+        message: `Faucet cooldown active. Try again in ${secondsLeft}s. For more devnet SOL, use https://faucet.solana.com`,
+        retryAfterSeconds: secondsLeft,
+      },
+      { status: 429 }
+    );
+  }
+
   let body: { address?: string; wallet?: string };
 
   try {
@@ -65,6 +99,9 @@ export async function POST(request: Request) {
         { status: 502 }
       );
     }
+
+    // Record successful request for rate limiting
+    ipLastRequest.set(ip, now);
 
     const txSig = rpcResult.result;
 
