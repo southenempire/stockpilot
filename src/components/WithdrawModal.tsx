@@ -11,6 +11,7 @@ import {
   faTriangleExclamation,
   faShieldHalved,
   faChartPie,
+  faBolt,
 } from '@fortawesome/free-solid-svg-icons';
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
@@ -65,6 +66,32 @@ export default function WithdrawModal({
   const [txSuccess, setTxSuccess] = useState(false);
   const [txSignature, setTxSignature] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isRefueling, setIsRefueling] = useState(false);
+  const [refuelMessage, setRefuelMessage] = useState<string | null>(null);
+
+  const handleRefuelGas = async () => {
+    if (!activePublicKey) return;
+    setIsRefueling(true);
+    setErrorMessage(null);
+    setRefuelMessage(null);
+    try {
+      const res = await fetch('/api/faucet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: activePublicKey.toBase58() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setRefuelMessage('Airdropped 1.0 Devnet SOL! Gas refueled.');
+      } else {
+        setErrorMessage(data.message || 'Devnet gas faucet rate-limited. Please use https://faucet.solana.com');
+      }
+    } catch {
+      setErrorMessage('Failed to connect to Devnet gas faucet.');
+    } finally {
+      setIsRefueling(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -104,6 +131,19 @@ export default function WithdrawModal({
     }
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    // Auto-refuel gas if wallet SOL is critically low (< 0.003 SOL)
+    if (realSolBalance !== null && realSolBalance < 0.003 && activePublicKey) {
+      try {
+        await fetch('/api/faucet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address: activePublicKey.toBase58() }),
+        });
+      } catch {
+        // Proceed with transaction attempt
+      }
+    }
 
     try {
       if (activePublicKey && sendTransaction) {
@@ -276,6 +316,34 @@ export default function WithdrawModal({
                   className="w-4 h-4 shrink-0 mt-0.5"
                 />
                 <span className="break-all">{errorMessage}</span>
+              </div>
+            )}
+
+            {/* Low Gas Notice & 1-Click Refuel */}
+            {realSolBalance !== null && realSolBalance < 0.005 && (
+              <div className="p-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-300 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FontAwesomeIcon icon={faBolt} className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <div className="truncate">
+                    <div className="font-bold text-[11px]">Low Gas ({realSolBalance.toFixed(4)} SOL)</div>
+                    <div className="text-[10px] text-zinc-400 truncate">Solana requires ~0.002 SOL for transaction fee & rent.</div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRefuelGas}
+                  disabled={isRefueling}
+                  className="px-2.5 py-1 rounded-lg bg-amber-500 text-black font-bold text-[11px] hover:bg-amber-400 cursor-pointer disabled:opacity-50 shrink-0"
+                >
+                  {isRefueling ? 'Refueling...' : 'Refuel (1 SOL)'}
+                </button>
+              </div>
+            )}
+
+            {refuelMessage && (
+              <div className="p-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs flex items-center gap-2">
+                <FontAwesomeIcon icon={faCircleCheck} className="w-3.5 h-3.5 shrink-0" />
+                <span>{refuelMessage}</span>
               </div>
             )}
 
