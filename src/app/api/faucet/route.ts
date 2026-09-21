@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 let rawRpcUrl =
   process.env.HELIUS_DEVNET_RPC_URL ??
   process.env.NEXT_PUBLIC_SOLANA_RPC_URL ??

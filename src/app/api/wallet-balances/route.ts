@@ -5,6 +5,9 @@ import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
 const USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'; // Official Circle Devnet USDC
 const AAPLX_MINT = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const address = searchParams.get('address');
@@ -77,14 +80,23 @@ export async function GET(req: NextRequest) {
       console.warn('Server token query error:', tokenErr);
     }
 
-    return NextResponse.json({
-      success: true,
-      address,
-      sol: solBalance,
-      usdc: usdcBalance,
-      vaultSol,
-      stocks,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        address,
+        sol: solBalance,
+        usdc: usdcBalance,
+        vaultSol,
+        stocks,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'CDN-Cache-Control': 'no-store',
+          'Vercel-CDN-Cache-Control': 'no-store',
+        },
+      }
+    );
   } catch (err: any) {
     console.error('Wallet balances API error:', err);
     return NextResponse.json({ error: err?.message || 'Failed to fetch balances' }, { status: 500 });
