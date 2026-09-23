@@ -1,0 +1,12 @@
+{
+  "idl": "anchor/target/idl/stockpilot.json",
+  "before": [],
+  "scripts": {
+    "js": {
+      "from": "@codama/renderers-js",
+      "args": [
+        "clients/js"
+      ]
+    }
+  }
+}
