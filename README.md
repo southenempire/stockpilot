@@ -11,9 +11,18 @@
 [![Telegram](https://img.shields.io/badge/Telegram-Community-24A1DE?style=flat-square&logo=telegram&logoColor=white)](https://t.me/+ir8klWwop_5mZjg0)
 [![X](https://img.shields.io/badge/X-@StockPilotSOL-000000?style=flat-square&logo=x&logoColor=white)](https://x.com/StockPilotSOL)
 
-[Terminal](https://stockpilotsol.xyz) / [Deployment Mirror](https://stockpilot-two-psi.vercel.app) / [Telegram](https://t.me/+ir8klWwop_5mZjg0) / [Twitter](https://x.com/StockPilotSOL)
+[Terminal](https://stockpilotsol.xyz) / [Mobile Seeker Client](https://github.com/southenempire/stockpilot-mobile) / [Download Android APK](https://expo.dev/artifacts/eas/J9vVK7kcNppX0nenEYACYkVJ9xrmWhPtx40DaWnqvQE.apk) / [Twitter](https://x.com/StockPilotSOL)
 
 </div>
+
+---
+
+## 📱 Native Solana Mobile Client (Solana Seeker)
+
+StockPilot is built mobile-first for the **Solana Seeker** phone and the **Solana dApp Store**:
+* **Mobile GitHub Repository:** [github.com/southenempire/stockpilot-mobile](https://github.com/southenempire/stockpilot-mobile)
+* **Direct APK Download (v1.2.3):** [Download Production APK](https://expo.dev/artifacts/eas/J9vVK7kcNppX0nenEYACYkVJ9xrmWhPtx40DaWnqvQE.apk)
+* **Key Features:** Mobile Wallet Adapter (MWA 2.0), biometric hardware custody via Seeker Seed Vault, 1-tap Anchor vault deposits, and autonomous drift rebalancing.
 
 ---
 
