@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/server/db';
 import { hashUserId, sanitizeString } from '@/lib/server/security';
+import {
+  isSupabaseConfigured,
+  upsertSupabaseUser,
+  getSupabaseRecentActivity,
+  getSupabaseCustomStrategies,
+} from '@/lib/server/supabase';
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +26,55 @@ export async function POST(req: NextRequest) {
     const settingsStr = settings ? JSON.stringify(settings) : null;
     const now = Date.now();
 
+    // 1. Prefer Supabase Cloud Database if configured
+    if (isSupabaseConfigured()) {
+      try {
+        await upsertSupabaseUser({
+          hashedId,
+          authProvider: provider,
+          displayName: name,
+          now,
+          settingsJson: settingsStr,
+        });
+
+        const [strategiesRes, activityRes] = await Promise.all([
+          getSupabaseCustomStrategies(hashedId),
+          getSupabaseRecentActivity(hashedId, 25),
+        ]);
+
+        const strategies = (strategiesRes.data || []).map((s: any) => ({
+          id: s.id,
+          name: s.name,
+          description: s.description,
+          targetWeights: JSON.parse(s.target_weights_json || '{}'),
+          createdAt: Number(s.created_at),
+        }));
+
+        const recentActivity = (activityRes.data || []).map((a: any) => ({
+          ...a,
+          created_at: Number(a.created_at),
+        }));
+
+        return NextResponse.json({
+          success: true,
+          hashedId,
+          source: 'supabase',
+          user: {
+            hashedId,
+            provider,
+            displayName: name,
+            createdAt: now,
+            lastActiveAt: now,
+          },
+          strategies,
+          recentActivity,
+        });
+      } catch (sbErr) {
+        console.warn('Supabase sync fallback to SQLite:', sbErr);
+      }
+    }
+
+    // 2. Fallback to local SQLite
     const db = getDatabase();
 
     // Check if user exists
@@ -62,6 +117,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       hashedId,
+      source: 'sqlite',
       user: {
         hashedId,
         provider,

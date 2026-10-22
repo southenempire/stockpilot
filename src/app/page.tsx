@@ -366,16 +366,49 @@ export default function StockPilotApp() {
   }, [cooldownSeconds]);
 
   // Synchronize user profile & history with backend database using HMAC-SHA256 hashed identity
+  // and load wallet-scoped local storage for instant zero-lag persistence across refreshes
   useEffect(() => {
     if (!connected || !publicKey) return;
 
+    const walletKey = publicKey.toBase58();
+
+    // 1. Instant local persistence hydration on refresh
+    try {
+      const cachedData = localStorage.getItem(`stockpilot_portfolio_${walletKey}`);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData);
+        if (parsed.txHistory && Array.isArray(parsed.txHistory) && parsed.txHistory.length > 0) {
+          setTxHistory((prev) => {
+            const existingIds = new Set(prev.map((t) => t.id));
+            const newTxs = parsed.txHistory.filter((t: any) => !existingIds.has(t.id));
+            return [...newTxs, ...prev];
+          });
+        }
+        if (parsed.holdings && Array.isArray(parsed.holdings) && parsed.holdings.length > 0) {
+          const hasShares = parsed.holdings.some((h: any) => (h.shares || 0) > 0);
+          if (hasShares) {
+            setHoldings(parsed.holdings);
+          }
+        }
+        if (parsed.strategyId) {
+          const matchedStrat = PREBUILT_STRATEGIES.find((s) => s.id === parsed.strategyId);
+          if (matchedStrat) {
+            setSelectedStrategy(matchedStrat);
+          }
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('Local storage hydration error:', cacheErr);
+    }
+
+    // 2. Synchronize with backend database (Supabase / SQLite)
     const syncUserBackend = async () => {
       try {
         const res = await fetch('/api/user/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            rawIdentifier: publicKey.toBase58(),
+            rawIdentifier: walletKey,
             authProvider: privySolanaAddress ? 'privy' : 'solana_wallet',
             displayName: privyUser?.email?.address || '',
           }),
@@ -386,17 +419,27 @@ export default function StockPilotApp() {
           if (data.success && data.recentActivity && data.recentActivity.length > 0) {
             const backendTxs = data.recentActivity.map((a: any) => ({
               id: a.id,
-              timestamp: a.created_at,
+              timestamp: Number(a.created_at),
               fromAsset: a.asset,
               toAsset: a.activity_type.toUpperCase(),
-              amountUsdc: a.amount,
+              amountUsdc: Number(a.amount),
               txSignature: a.tx_signature,
               reason: a.reason,
             }));
             setTxHistory((prev) => {
               const existingIds = new Set(prev.map((t) => t.id));
               const newTxs = backendTxs.filter((t: any) => !existingIds.has(t.id));
-              return [...newTxs, ...prev];
+              const combined = [...newTxs, ...prev];
+              // Persist combined history to local storage
+              try {
+                const existing = localStorage.getItem(`stockpilot_portfolio_${walletKey}`);
+                const parsed = existing ? JSON.parse(existing) : {};
+                localStorage.setItem(
+                  `stockpilot_portfolio_${walletKey}`,
+                  JSON.stringify({ ...parsed, txHistory: combined, updatedAt: Date.now() })
+                );
+              } catch {}
+              return combined;
             });
           }
         }
@@ -407,6 +450,26 @@ export default function StockPilotApp() {
 
     syncUserBackend();
   }, [connected, publicKey, privySolanaAddress, privyUser]);
+
+  // Auto-save active portfolio holdings & strategy state to localStorage whenever they change
+  useEffect(() => {
+    if (!connected || !publicKey) return;
+    try {
+      const walletKey = publicKey.toBase58();
+      const existing = localStorage.getItem(`stockpilot_portfolio_${walletKey}`);
+      const parsed = existing ? JSON.parse(existing) : {};
+      localStorage.setItem(
+        `stockpilot_portfolio_${walletKey}`,
+        JSON.stringify({
+          ...parsed,
+          holdings,
+          strategyId: selectedStrategy.id,
+          txHistory,
+          updatedAt: Date.now(),
+        })
+      );
+    } catch {}
+  }, [connected, publicKey, holdings, selectedStrategy, txHistory]);
 
   // Handle strategy switch
   const handleSelectStrategy = (strat: BasketStrategy) => {

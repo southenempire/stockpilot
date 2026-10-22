@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/server/db';
 import { hashUserId, sanitizeString } from '@/lib/server/security';
+import {
+  isSupabaseConfigured,
+  logSupabaseActivity,
+  getSupabaseRecentActivity,
+  upsertSupabaseUser,
+} from '@/lib/server/supabase';
 import { randomUUID } from 'node:crypto';
 
 export async function GET(req: NextRequest) {
@@ -16,13 +22,30 @@ export async function GET(req: NextRequest) {
     }
 
     const hashedId = hashUserId(rawIdentifier);
+
+    // Prefer Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        const { data, error } = await getSupabaseRecentActivity(hashedId, 50);
+        if (!error && data) {
+          const activity = data.map((a: any) => ({
+            ...a,
+            created_at: Number(a.created_at),
+          }));
+          return NextResponse.json({ success: true, activity, source: 'supabase' });
+        }
+      } catch (sbErr) {
+        console.warn('Supabase activity GET fallback to SQLite:', sbErr);
+      }
+    }
+
     const db = getDatabase();
     const actStmt = db.prepare(
       'SELECT * FROM activity_logs WHERE user_hashed_id = ? ORDER BY created_at DESC LIMIT 50'
     );
     const activity = actStmt.all(hashedId);
 
-    return NextResponse.json({ success: true, activity });
+    return NextResponse.json({ success: true, activity, source: 'sqlite' });
   } catch (error: any) {
     console.error('API /api/user/activity GET error:', error);
     return NextResponse.json(
@@ -65,6 +88,45 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Prefer Supabase if configured
+    if (isSupabaseConfigured()) {
+      try {
+        await upsertSupabaseUser({
+          hashedId,
+          authProvider: 'solana_wallet',
+          displayName: '',
+          now,
+        });
+
+        await logSupabaseActivity({
+          id,
+          userHashedId: hashedId,
+          activityType: actType,
+          asset: actAsset,
+          amount: actAmount,
+          txSignature: sig,
+          reason: actReason,
+          createdAt: now,
+        });
+
+        return NextResponse.json({
+          success: true,
+          source: 'supabase',
+          log: {
+            id,
+            activityType: actType,
+            asset: actAsset,
+            amount: actAmount,
+            txSignature: sig,
+            reason: actReason,
+            createdAt: now,
+          },
+        });
+      } catch (sbErr) {
+        console.warn('Supabase activity POST fallback to SQLite:', sbErr);
+      }
+    }
+
     const db = getDatabase();
 
     // Ensure user exists first
@@ -85,6 +147,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      source: 'sqlite',
       log: {
         id,
         activityType: actType,
