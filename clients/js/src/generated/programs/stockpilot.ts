@@ -34,38 +34,74 @@ import {
   type SelfPlanAndSendFunctions,
 } from "@solana/program-client-core";
 import {
+  getAutopilotConfigCodec,
+  getOraclePoolCodec,
   getStockVaultCodec,
+  type AutopilotConfig,
+  type AutopilotConfigArgs,
+  type OraclePool,
+  type OraclePoolArgs,
   type StockVault,
   type StockVaultArgs,
 } from "../accounts";
 import {
+  getCloseAutopilotInstructionAsync,
+  getCloseOraclePoolInstructionAsync,
+  getConfigureAutopilotInstructionAsync,
   getDepositInstructionAsync,
   getInitializeVaultInstructionAsync,
+  getInitOraclePoolInstructionAsync,
   getRebalanceInstruction,
+  getRebalanceSwapInstructionAsync,
+  getRevokeKeeperInstructionAsync,
   getWithdrawInstructionAsync,
+  getWithdrawPoolLiquidityInstructionAsync,
   getWithdrawSolInstructionAsync,
+  parseCloseAutopilotInstruction,
+  parseCloseOraclePoolInstruction,
+  parseConfigureAutopilotInstruction,
   parseDepositInstruction,
   parseInitializeVaultInstruction,
+  parseInitOraclePoolInstruction,
   parseRebalanceInstruction,
+  parseRebalanceSwapInstruction,
+  parseRevokeKeeperInstruction,
   parseWithdrawInstruction,
+  parseWithdrawPoolLiquidityInstruction,
   parseWithdrawSolInstruction,
+  type CloseAutopilotAsyncInput,
+  type CloseOraclePoolAsyncInput,
+  type ConfigureAutopilotAsyncInput,
   type DepositAsyncInput,
   type InitializeVaultAsyncInput,
+  type InitOraclePoolAsyncInput,
+  type ParsedCloseAutopilotInstruction,
+  type ParsedCloseOraclePoolInstruction,
+  type ParsedConfigureAutopilotInstruction,
   type ParsedDepositInstruction,
   type ParsedInitializeVaultInstruction,
+  type ParsedInitOraclePoolInstruction,
   type ParsedRebalanceInstruction,
+  type ParsedRebalanceSwapInstruction,
+  type ParsedRevokeKeeperInstruction,
   type ParsedWithdrawInstruction,
+  type ParsedWithdrawPoolLiquidityInstruction,
   type ParsedWithdrawSolInstruction,
   type RebalanceInput,
+  type RebalanceSwapAsyncInput,
+  type RevokeKeeperAsyncInput,
   type WithdrawAsyncInput,
+  type WithdrawPoolLiquidityAsyncInput,
   type WithdrawSolAsyncInput,
 } from "../instructions";
-import { findVaultPda } from "../pdas";
+import { findConfigPda, findPoolPda, findVaultPda } from "../pdas";
 
 export const STOCKPILOT_PROGRAM_ADDRESS =
   "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK" as Address<"CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK">;
 
 export enum StockpilotAccount {
+  AutopilotConfig,
+  OraclePool,
   StockVault,
 }
 
@@ -73,6 +109,28 @@ export function identifyStockpilotAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
 ): StockpilotAccount {
   const data = "data" in account ? account.data : account;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([232, 38, 199, 80, 21, 128, 231, 234]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotAccount.AutopilotConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([42, 185, 120, 24, 182, 8, 43, 146]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotAccount.OraclePool;
+  }
   if (
     containsBytes(
       data,
@@ -90,11 +148,42 @@ export function identifyStockpilotAccount(
   );
 }
 
+export enum StockpilotEvent {
+  RebalanceSwapped,
+}
+
+export function identifyStockpilotEvent(
+  event: { data: ReadonlyUint8Array } | ReadonlyUint8Array,
+): StockpilotEvent {
+  const data = "data" in event ? event.data : event;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([179, 74, 203, 67, 80, 80, 255, 243]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotEvent.RebalanceSwapped;
+  }
+  throw new Error(
+    "The provided event could not be identified as a stockpilot event.",
+  );
+}
+
 export enum StockpilotInstruction {
+  CloseAutopilot,
+  CloseOraclePool,
+  ConfigureAutopilot,
   Deposit,
+  InitOraclePool,
   InitializeVault,
   Rebalance,
+  RebalanceSwap,
+  RevokeKeeper,
   Withdraw,
+  WithdrawPoolLiquidity,
   WithdrawSol,
 }
 
@@ -106,12 +195,56 @@ export function identifyStockpilotInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([74, 11, 222, 150, 42, 111, 19, 102]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.CloseAutopilot;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([114, 72, 210, 27, 53, 66, 222, 105]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.CloseOraclePool;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([141, 177, 130, 6, 19, 72, 15, 67]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.ConfigureAutopilot;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([242, 35, 198, 137, 82, 225, 242, 182]),
       ),
       0,
     )
   ) {
     return StockpilotInstruction.Deposit;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([85, 111, 236, 34, 95, 89, 52, 147]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.InitOraclePool;
   }
   if (
     containsBytes(
@@ -139,12 +272,45 @@ export function identifyStockpilotInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([90, 137, 176, 237, 23, 33, 196, 254]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.RebalanceSwap;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([32, 126, 143, 92, 2, 4, 203, 242]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.RevokeKeeper;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([183, 18, 70, 156, 148, 109, 161, 34]),
       ),
       0,
     )
   ) {
     return StockpilotInstruction.Withdraw;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([160, 66, 244, 82, 237, 226, 155, 241]),
+      ),
+      0,
+    )
+  ) {
+    return StockpilotInstruction.WithdrawPoolLiquidity;
   }
   if (
     containsBytes(
@@ -167,8 +333,20 @@ export type ParsedStockpilotInstruction<
   TProgram extends string = "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK",
 > =
   | ({
+      instructionType: StockpilotInstruction.CloseAutopilot;
+    } & ParsedCloseAutopilotInstruction<TProgram>)
+  | ({
+      instructionType: StockpilotInstruction.CloseOraclePool;
+    } & ParsedCloseOraclePoolInstruction<TProgram>)
+  | ({
+      instructionType: StockpilotInstruction.ConfigureAutopilot;
+    } & ParsedConfigureAutopilotInstruction<TProgram>)
+  | ({
       instructionType: StockpilotInstruction.Deposit;
     } & ParsedDepositInstruction<TProgram>)
+  | ({
+      instructionType: StockpilotInstruction.InitOraclePool;
+    } & ParsedInitOraclePoolInstruction<TProgram>)
   | ({
       instructionType: StockpilotInstruction.InitializeVault;
     } & ParsedInitializeVaultInstruction<TProgram>)
@@ -176,8 +354,17 @@ export type ParsedStockpilotInstruction<
       instructionType: StockpilotInstruction.Rebalance;
     } & ParsedRebalanceInstruction<TProgram>)
   | ({
+      instructionType: StockpilotInstruction.RebalanceSwap;
+    } & ParsedRebalanceSwapInstruction<TProgram>)
+  | ({
+      instructionType: StockpilotInstruction.RevokeKeeper;
+    } & ParsedRevokeKeeperInstruction<TProgram>)
+  | ({
       instructionType: StockpilotInstruction.Withdraw;
     } & ParsedWithdrawInstruction<TProgram>)
+  | ({
+      instructionType: StockpilotInstruction.WithdrawPoolLiquidity;
+    } & ParsedWithdrawPoolLiquidityInstruction<TProgram>)
   | ({
       instructionType: StockpilotInstruction.WithdrawSol;
     } & ParsedWithdrawSolInstruction<TProgram>);
@@ -187,11 +374,39 @@ export function parseStockpilotInstruction<TProgram extends string>(
 ): ParsedStockpilotInstruction<TProgram> {
   const instructionType = identifyStockpilotInstruction(instruction);
   switch (instructionType) {
+    case StockpilotInstruction.CloseAutopilot: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.CloseAutopilot,
+        ...parseCloseAutopilotInstruction(instruction),
+      };
+    }
+    case StockpilotInstruction.CloseOraclePool: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.CloseOraclePool,
+        ...parseCloseOraclePoolInstruction(instruction),
+      };
+    }
+    case StockpilotInstruction.ConfigureAutopilot: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.ConfigureAutopilot,
+        ...parseConfigureAutopilotInstruction(instruction),
+      };
+    }
     case StockpilotInstruction.Deposit: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: StockpilotInstruction.Deposit,
         ...parseDepositInstruction(instruction),
+      };
+    }
+    case StockpilotInstruction.InitOraclePool: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.InitOraclePool,
+        ...parseInitOraclePoolInstruction(instruction),
       };
     }
     case StockpilotInstruction.InitializeVault: {
@@ -208,11 +423,32 @@ export function parseStockpilotInstruction<TProgram extends string>(
         ...parseRebalanceInstruction(instruction),
       };
     }
+    case StockpilotInstruction.RebalanceSwap: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.RebalanceSwap,
+        ...parseRebalanceSwapInstruction(instruction),
+      };
+    }
+    case StockpilotInstruction.RevokeKeeper: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.RevokeKeeper,
+        ...parseRevokeKeeperInstruction(instruction),
+      };
+    }
     case StockpilotInstruction.Withdraw: {
       assertIsInstructionWithAccounts(instruction);
       return {
         instructionType: StockpilotInstruction.Withdraw,
         ...parseWithdrawInstruction(instruction),
+      };
+    }
+    case StockpilotInstruction.WithdrawPoolLiquidity: {
+      assertIsInstructionWithAccounts(instruction);
+      return {
+        instructionType: StockpilotInstruction.WithdrawPoolLiquidity,
+        ...parseWithdrawPoolLiquidityInstruction(instruction),
       };
     }
     case StockpilotInstruction.WithdrawSol: {
@@ -243,14 +479,34 @@ export type StockpilotPlugin = {
 };
 
 export type StockpilotPluginAccounts = {
+  autopilotConfig: ReturnType<typeof getAutopilotConfigCodec> &
+    SelfFetchFunctions<AutopilotConfigArgs, AutopilotConfig>;
+  oraclePool: ReturnType<typeof getOraclePoolCodec> &
+    SelfFetchFunctions<OraclePoolArgs, OraclePool>;
   stockVault: ReturnType<typeof getStockVaultCodec> &
     SelfFetchFunctions<StockVaultArgs, StockVault>;
 };
 
 export type StockpilotPluginInstructions = {
+  closeAutopilot: (
+    input: CloseAutopilotAsyncInput,
+  ) => ReturnType<typeof getCloseAutopilotInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  closeOraclePool: (
+    input: CloseOraclePoolAsyncInput,
+  ) => ReturnType<typeof getCloseOraclePoolInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  configureAutopilot: (
+    input: ConfigureAutopilotAsyncInput,
+  ) => ReturnType<typeof getConfigureAutopilotInstructionAsync> &
+    SelfPlanAndSendFunctions;
   deposit: (
     input: DepositAsyncInput,
   ) => ReturnType<typeof getDepositInstructionAsync> & SelfPlanAndSendFunctions;
+  initOraclePool: (
+    input: InitOraclePoolAsyncInput,
+  ) => ReturnType<typeof getInitOraclePoolInstructionAsync> &
+    SelfPlanAndSendFunctions;
   initializeVault: (
     input: InitializeVaultAsyncInput,
   ) => ReturnType<typeof getInitializeVaultInstructionAsync> &
@@ -258,9 +514,21 @@ export type StockpilotPluginInstructions = {
   rebalance: (
     input: RebalanceInput,
   ) => ReturnType<typeof getRebalanceInstruction> & SelfPlanAndSendFunctions;
+  rebalanceSwap: (
+    input: RebalanceSwapAsyncInput,
+  ) => ReturnType<typeof getRebalanceSwapInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  revokeKeeper: (
+    input: RevokeKeeperAsyncInput,
+  ) => ReturnType<typeof getRevokeKeeperInstructionAsync> &
+    SelfPlanAndSendFunctions;
   withdraw: (
     input: WithdrawAsyncInput,
   ) => ReturnType<typeof getWithdrawInstructionAsync> &
+    SelfPlanAndSendFunctions;
+  withdrawPoolLiquidity: (
+    input: WithdrawPoolLiquidityAsyncInput,
+  ) => ReturnType<typeof getWithdrawPoolLiquidityInstructionAsync> &
     SelfPlanAndSendFunctions;
   withdrawSol: (
     input: WithdrawSolAsyncInput,
@@ -268,7 +536,11 @@ export type StockpilotPluginInstructions = {
     SelfPlanAndSendFunctions;
 };
 
-export type StockpilotPluginPdas = { vault: typeof findVaultPda };
+export type StockpilotPluginPdas = {
+  vault: typeof findVaultPda;
+  config: typeof findConfigPda;
+  pool: typeof findPoolPda;
+};
 
 export type StockpilotPluginRequirements = ClientWithRpc<
   GetAccountInfoApi & GetMultipleAccountsApi
@@ -283,13 +555,38 @@ export function stockpilotProgram() {
     return extendClient(client, {
       stockpilot: <StockpilotPlugin>{
         accounts: {
+          autopilotConfig: addSelfFetchFunctions(
+            client,
+            getAutopilotConfigCodec(),
+          ),
+          oraclePool: addSelfFetchFunctions(client, getOraclePoolCodec()),
           stockVault: addSelfFetchFunctions(client, getStockVaultCodec()),
         },
         instructions: {
+          closeAutopilot: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseAutopilotInstructionAsync(input),
+            ),
+          closeOraclePool: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getCloseOraclePoolInstructionAsync(input),
+            ),
+          configureAutopilot: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getConfigureAutopilotInstructionAsync(input),
+            ),
           deposit: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getDepositInstructionAsync(input),
+            ),
+          initOraclePool: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getInitOraclePoolInstructionAsync(input),
             ),
           initializeVault: (input) =>
             addSelfPlanAndSendFunctions(
@@ -298,10 +595,25 @@ export function stockpilotProgram() {
             ),
           rebalance: (input) =>
             addSelfPlanAndSendFunctions(client, getRebalanceInstruction(input)),
+          rebalanceSwap: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRebalanceSwapInstructionAsync(input),
+            ),
+          revokeKeeper: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getRevokeKeeperInstructionAsync(input),
+            ),
           withdraw: (input) =>
             addSelfPlanAndSendFunctions(
               client,
               getWithdrawInstructionAsync(input),
+            ),
+          withdrawPoolLiquidity: (input) =>
+            addSelfPlanAndSendFunctions(
+              client,
+              getWithdrawPoolLiquidityInstructionAsync(input),
             ),
           withdrawSol: (input) =>
             addSelfPlanAndSendFunctions(
@@ -309,7 +621,7 @@ export function stockpilotProgram() {
               getWithdrawSolInstructionAsync(input),
             ),
         },
-        pdas: { vault: findVaultPda },
+        pdas: { vault: findVaultPda, config: findConfigPda, pool: findPoolPda },
         identifyAccount: identifyStockpilotAccount,
         identifyInstruction: identifyStockpilotInstruction,
         parseInstruction: parseStockpilotInstruction,

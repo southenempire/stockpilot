@@ -60,6 +60,7 @@ export type DepositInstruction<
   TAccountMint extends string | AccountMeta<string> = string,
   TAccountOwnerTokenAccount extends string | AccountMeta<string> = string,
   TAccountVaultTokenAccount extends string | AccountMeta<string> = string,
+  TAccountTreasuryTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends string | AccountMeta<string> =
     "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -83,6 +84,9 @@ export type DepositInstruction<
       TAccountVaultTokenAccount extends string
         ? WritableAccount<TAccountVaultTokenAccount>
         : TAccountVaultTokenAccount,
+      TAccountTreasuryTokenAccount extends string
+        ? WritableAccount<TAccountTreasuryTokenAccount>
+        : TAccountTreasuryTokenAccount,
       TAccountTokenProgram extends string
         ? ReadonlyAccount<TAccountTokenProgram>
         : TAccountTokenProgram,
@@ -132,6 +136,8 @@ export type DepositAsyncInput<
     InstructionAccountInput,
   TAccountVaultTokenAccount extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountTreasuryTokenAccount extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -140,6 +146,7 @@ export type DepositAsyncInput<
   mint: TAccountMint;
   ownerTokenAccount: TAccountOwnerTokenAccount;
   vaultTokenAccount: TAccountVaultTokenAccount;
+  treasuryTokenAccount: TAccountTreasuryTokenAccount;
   tokenProgram?: TAccountTokenProgram;
   amount: DepositInstructionDataArgs["amount"];
 };
@@ -150,6 +157,7 @@ export async function getDepositInstructionAsync<
   TAccountMint extends InstructionAccountInput,
   TAccountOwnerTokenAccount extends InstructionAccountInput,
   TAccountVaultTokenAccount extends InstructionAccountInput,
+  TAccountTreasuryTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof STOCKPILOT_PROGRAM_ADDRESS,
 >(
@@ -159,6 +167,7 @@ export async function getDepositInstructionAsync<
     TAccountMint,
     TAccountOwnerTokenAccount,
     TAccountVaultTokenAccount,
+    TAccountTreasuryTokenAccount,
     TAccountTokenProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -186,6 +195,10 @@ export async function getDepositInstructionAsync<
       InstructionAccountInputAddress<TAccountVaultTokenAccount>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTreasuryTokenAccount,
+      InstructionAccountInputAddress<TAccountTreasuryTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
     >
@@ -209,6 +222,11 @@ export async function getDepositInstructionAsync<
     },
     vaultTokenAccount: {
       value: input.vaultTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    treasuryTokenAccount: {
+      value: input.treasuryTokenAccount ?? null,
       isSigner: false,
       isWritable: true,
     },
@@ -250,6 +268,7 @@ export async function getDepositInstructionAsync<
       getAccountMeta("mint", accounts.mint),
       getAccountMeta("ownerTokenAccount", accounts.ownerTokenAccount),
       getAccountMeta("vaultTokenAccount", accounts.vaultTokenAccount),
+      getAccountMeta("treasuryTokenAccount", accounts.treasuryTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
     ],
     data: getDepositInstructionDataEncoder().encode(
@@ -279,6 +298,10 @@ export async function getDepositInstructionAsync<
       InstructionAccountInputAddress<TAccountVaultTokenAccount>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTreasuryTokenAccount,
+      InstructionAccountInputAddress<TAccountTreasuryTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
     >
@@ -293,6 +316,8 @@ export type DepositInput<
     InstructionAccountInput,
   TAccountVaultTokenAccount extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountTreasuryTokenAccount extends InstructionAccountInput =
+    InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput =
     InstructionAccountInput,
 > = {
@@ -301,6 +326,7 @@ export type DepositInput<
   mint: TAccountMint;
   ownerTokenAccount: TAccountOwnerTokenAccount;
   vaultTokenAccount: TAccountVaultTokenAccount;
+  treasuryTokenAccount: TAccountTreasuryTokenAccount;
   tokenProgram?: TAccountTokenProgram;
   amount: DepositInstructionDataArgs["amount"];
 };
@@ -311,6 +337,7 @@ export function getDepositInstruction<
   TAccountMint extends InstructionAccountInput,
   TAccountOwnerTokenAccount extends InstructionAccountInput,
   TAccountVaultTokenAccount extends InstructionAccountInput,
+  TAccountTreasuryTokenAccount extends InstructionAccountInput,
   TAccountTokenProgram extends InstructionAccountInput,
   TProgramAddress extends Address = typeof STOCKPILOT_PROGRAM_ADDRESS,
 >(
@@ -320,6 +347,7 @@ export function getDepositInstruction<
     TAccountMint,
     TAccountOwnerTokenAccount,
     TAccountVaultTokenAccount,
+    TAccountTreasuryTokenAccount,
     TAccountTokenProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -346,6 +374,10 @@ export function getDepositInstruction<
     InstructionAccountInputAddress<TAccountVaultTokenAccount>
   >,
   ResolvedInstructionAccountMeta<
+    TAccountTreasuryTokenAccount,
+    InstructionAccountInputAddress<TAccountTreasuryTokenAccount>
+  >,
+  ResolvedInstructionAccountMeta<
     TAccountTokenProgram,
     InstructionAccountInputAddress<TAccountTokenProgram>
   >
@@ -368,6 +400,11 @@ export function getDepositInstruction<
     },
     vaultTokenAccount: {
       value: input.vaultTokenAccount ?? null,
+      isSigner: false,
+      isWritable: true,
+    },
+    treasuryTokenAccount: {
+      value: input.treasuryTokenAccount ?? null,
       isSigner: false,
       isWritable: true,
     },
@@ -398,6 +435,7 @@ export function getDepositInstruction<
       getAccountMeta("mint", accounts.mint),
       getAccountMeta("ownerTokenAccount", accounts.ownerTokenAccount),
       getAccountMeta("vaultTokenAccount", accounts.vaultTokenAccount),
+      getAccountMeta("treasuryTokenAccount", accounts.treasuryTokenAccount),
       getAccountMeta("tokenProgram", accounts.tokenProgram),
     ],
     data: getDepositInstructionDataEncoder().encode(
@@ -427,6 +465,10 @@ export function getDepositInstruction<
       InstructionAccountInputAddress<TAccountVaultTokenAccount>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountTreasuryTokenAccount,
+      InstructionAccountInputAddress<TAccountTreasuryTokenAccount>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountTokenProgram,
       InstructionAccountInputAddress<TAccountTokenProgram>
     >
@@ -444,7 +486,8 @@ export type ParsedDepositInstruction<
     mint: TAccountMetas[2];
     ownerTokenAccount: TAccountMetas[3];
     vaultTokenAccount: TAccountMetas[4];
-    tokenProgram: TAccountMetas[5];
+    treasuryTokenAccount: TAccountMetas[5];
+    tokenProgram: TAccountMetas[6];
   };
   data: DepositInstructionData;
 };
@@ -457,12 +500,12 @@ export function parseDepositInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedDepositInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 7) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 6,
+        expectedAccountMetas: 7,
       },
     );
   }
@@ -480,6 +523,7 @@ export function parseDepositInstruction<
       mint: getNextAccount(),
       ownerTokenAccount: getNextAccount(),
       vaultTokenAccount: getNextAccount(),
+      treasuryTokenAccount: getNextAccount(),
       tokenProgram: getNextAccount(),
     },
     data: getDepositInstructionDataDecoder().decode(instruction.data),

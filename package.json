@@ -7,6 +7,8 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "idl": "cd anchor/programs/stockpilot && anchor idl build -o ../../idl/stockpilot.json",
+    "codama": "node scripts/generate-client.mjs",
     "test": "tsx --test tests/*.test.ts anchor/tests/stockpilot.ts"
   },
   "dependencies": {
@@ -36,6 +38,8 @@
     "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
+    "@codama/renderers-js": "2.5.0",
+    "@codama/visitors-core": "1.11.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

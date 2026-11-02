@@ -1,5 +1,5 @@
 {
-  "idl": "anchor/target/idl/stockpilot.json",
+  "idl": "anchor/idl/stockpilot.json",
   "before": [],
   "scripts": {
     "js": {

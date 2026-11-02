@@ -1,0 +1,1395 @@
+{
+  "address": "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK",
+  "metadata": {
+    "name": "stockpilot",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Autonomous 24/7 AI Stock Robo-Advisor and Rebalance Vault Program on Solana"
+  },
+  "instructions": [
+    {
+      "name": "close_autopilot",
+      "docs": [
+        "Owner turns autopilot off for good and gets the settings account's rent back."
+      ],
+      "discriminator": [
+        74,
+        11,
+        222,
+        150,
+        42,
+        111,
+        19,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          },
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  111,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_oracle_pool",
+      "docs": [
+        "Admin closes the pool account and gets its rent back. Empty and close the",
+        "pool's token accounts first with `withdraw_pool_liquidity`; any left open",
+        "stay recoverable because re-creating the pool gives the same PDA."
+      ],
+      "discriminator": [
+        114,
+        72,
+        210,
+        27,
+        53,
+        66,
+        222,
+        105
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "configure_autopilot",
+      "docs": [
+        "Owner signs the autopilot mandate: which key may rebalance, which assets,",
+        "target weights, and the limits every keeper trade is checked against."
+      ],
+      "discriminator": [
+        141,
+        177,
+        130,
+        6,
+        19,
+        72,
+        15,
+        67
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  111,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "keeper",
+          "type": "pubkey"
+        },
+        {
+          "name": "pool",
+          "type": "pubkey"
+        },
+        {
+          "name": "assets",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "BasketAsset"
+              }
+            }
+          }
+        },
+        {
+          "name": "limits",
+          "type": {
+            "defined": {
+              "name": "AutopilotLimits"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "docs": [
+        "Deposit tokens into the user's autonomous portfolio vault with 0.15% protocol fee deduction"
+      ],
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "treasury_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "init_oracle_pool",
+      "docs": [
+        "Create an oracle-priced liquidity pool. The admin funds it by transferring",
+        "tokens into token accounts owned by the pool PDA."
+      ],
+      "discriminator": [
+        85,
+        111,
+        236,
+        34,
+        95,
+        89,
+        52,
+        147
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "pool",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "spread_bps",
+          "type": "u16"
+        }
+      ]
+    },
+    {
+      "name": "initialize_vault",
+      "docs": [
+        "Initialize a new on-chain autonomous stock portfolio vault for the user"
+      ],
+      "discriminator": [
+        48,
+        191,
+        163,
+        44,
+        71,
+        129,
+        63,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "strategy_id",
+          "type": "string"
+        },
+        {
+          "name": "target_weights",
+          "type": {
+            "vec": "u16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rebalance",
+      "docs": [
+        "On-chain state and timelock cooldown coordinator for autonomous rebalancing.",
+        "Enforces owner authorization and timelock cooldown invariants on-chain,",
+        "while multi-token swap execution is routed atomically via Jupiter on the client."
+      ],
+      "discriminator": [
+        108,
+        158,
+        77,
+        9,
+        210,
+        52,
+        88,
+        62
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.owner",
+                "account": "StockVault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "_drift_bps",
+          "type": {
+            "vec": "i16"
+          }
+        }
+      ]
+    },
+    {
+      "name": "rebalance_swap",
+      "docs": [
+        "Swap one basket asset for another inside the vault, at the Pyth price,",
+        "against the oracle pool. Callable by the owner or the approved keeper.",
+        "",
+        "The keeper can only move value between the vault's own token accounts, and",
+        "only when the trade reduces drift toward the owner's target weights. It can",
+        "never withdraw, change the mandate, or trade on a stale or bad price.",
+        "",
+        "remaining_accounts: for every basket asset, in mandate order,",
+        "`[vault's associated token account, Pyth PriceUpdateV2 account]`."
+      ],
+      "discriminator": [
+        90,
+        137,
+        176,
+        237,
+        23,
+        33,
+        196,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "docs": [
+            "Vault owner or the approved keeper; checked in the handler."
+          ],
+          "signer": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault.owner",
+                "account": "StockVault"
+              }
+            ]
+          },
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  111,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "pool.admin",
+                "account": "OraclePool"
+              }
+            ]
+          },
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "from_mint"
+        },
+        {
+          "name": "to_mint"
+        },
+        {
+          "name": "vault_from_account",
+          "writable": true
+        },
+        {
+          "name": "vault_to_account",
+          "writable": true
+        },
+        {
+          "name": "pool_from_account",
+          "writable": true
+        },
+        {
+          "name": "pool_to_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "from_index",
+          "type": "u8"
+        },
+        {
+          "name": "to_index",
+          "type": "u8"
+        },
+        {
+          "name": "amount_in",
+          "type": "u64"
+        },
+        {
+          "name": "min_amount_out",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "revoke_keeper",
+      "docs": [
+        "Owner switches autopilot off. The keeper key loses all rights immediately."
+      ],
+      "discriminator": [
+        32,
+        126,
+        143,
+        92,
+        2,
+        4,
+        203,
+        242
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          },
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  97,
+                  117,
+                  116,
+                  111,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "vault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "docs": [
+        "Withdraw SPL tokens from the vault back to the owner"
+      ],
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "vault_token_account",
+          "writable": true
+        },
+        {
+          "name": "owner_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_pool_liquidity",
+      "docs": [
+        "Admin pulls liquidity out of the pool. Once a pool token account is empty",
+        "it is closed and its rent goes back to the admin."
+      ],
+      "discriminator": [
+        160,
+        66,
+        244,
+        82,
+        237,
+        226,
+        155,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "pool"
+          ]
+        },
+        {
+          "name": "pool",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  114,
+                  97,
+                  99,
+                  108,
+                  101,
+                  95,
+                  112,
+                  111,
+                  111,
+                  108
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "admin"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "pool_token_account",
+          "writable": true
+        },
+        {
+          "name": "admin_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdraw_sol",
+      "docs": [
+        "Withdraw native SOL from the vault PDA back to the owner"
+      ],
+      "discriminator": [
+        145,
+        131,
+        74,
+        136,
+        65,
+        137,
+        42,
+        38
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  116,
+                  111,
+                  99,
+                  107,
+                  112,
+                  105,
+                  108,
+                  111,
+                  116,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AutopilotConfig",
+      "discriminator": [
+        232,
+        38,
+        199,
+        80,
+        21,
+        128,
+        231,
+        234
+      ]
+    },
+    {
+      "name": "OraclePool",
+      "discriminator": [
+        42,
+        185,
+        120,
+        24,
+        182,
+        8,
+        43,
+        146
+      ]
+    },
+    {
+      "name": "StockVault",
+      "discriminator": [
+        155,
+        157,
+        36,
+        118,
+        92,
+        14,
+        176,
+        222
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "RebalanceSwapped",
+      "discriminator": [
+        179,
+        74,
+        203,
+        67,
+        80,
+        80,
+        255,
+        243
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "RebalanceCooldownActive",
+      "msg": "Rebalance cooldown is active. Wait for the timelock to expire."
+    },
+    {
+      "code": 6001,
+      "name": "CalculationOverflow",
+      "msg": "Math calculation overflow."
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds in vault for withdrawal."
+    },
+    {
+      "code": 6003,
+      "name": "InvalidTokenAccount",
+      "msg": "Invalid token account owner."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidMint",
+      "msg": "Invalid token mint."
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Unauthorized: caller is not the vault owner."
+    },
+    {
+      "code": 6006,
+      "name": "InvalidConfig",
+      "msg": "Invalid autopilot configuration."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidAsset",
+      "msg": "Asset is not part of this vault's basket."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidPriceAccount",
+      "msg": "Price account is not a valid, fully verified Pyth update for this asset."
+    },
+    {
+      "code": 6009,
+      "name": "StalePriceOrMarketClosed",
+      "msg": "Price is stale or the market is closed."
+    },
+    {
+      "code": 6010,
+      "name": "PriceTooUncertain",
+      "msg": "Price confidence interval is too wide."
+    },
+    {
+      "code": 6011,
+      "name": "DriftBelowThreshold",
+      "msg": "Basket drift is below the rebalance threshold."
+    },
+    {
+      "code": 6012,
+      "name": "TradeWorsensDrift",
+      "msg": "Trade would not move the basket toward its target weights."
+    },
+    {
+      "code": 6013,
+      "name": "TradeTooLarge",
+      "msg": "Trade exceeds the per-rebalance size limit."
+    },
+    {
+      "code": 6014,
+      "name": "SlippageExceeded",
+      "msg": "Execution price is worse than the allowed slippage."
+    },
+    {
+      "code": 6015,
+      "name": "InsufficientPoolLiquidity",
+      "msg": "Oracle pool does not have enough liquidity."
+    },
+    {
+      "code": 6016,
+      "name": "BalanceCheckFailed",
+      "msg": "Vault balances did not change by the expected amounts."
+    }
+  ],
+  "types": [
+    {
+      "name": "AutopilotConfig",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "keeper",
+            "type": "pubkey"
+          },
+          {
+            "name": "enabled",
+            "type": "bool"
+          },
+          {
+            "name": "pool",
+            "type": "pubkey"
+          },
+          {
+            "name": "assets",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "BasketAsset"
+                }
+              }
+            }
+          },
+          {
+            "name": "limits",
+            "type": {
+              "defined": {
+                "name": "AutopilotLimits"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "AutopilotLimits",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "drift_threshold_bps",
+            "docs": [
+              "Rebalance only when some asset is this far from target (500 = 5%)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_slippage_bps",
+            "docs": [
+              "Worst price the vault accepts versus the oracle (100 = 1%)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_trade_bps",
+            "docs": [
+              "Largest single trade as a share of the basket (2_500 = 25%)."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "max_price_age_secs",
+            "docs": [
+              "Oldest acceptable Pyth price. Also stops trading while the market is closed."
+            ],
+            "type": "u32"
+          }
+        ]
+      }
+    },
+    {
+      "name": "BasketAsset",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "feed_id",
+            "docs": [
+              "Pyth price feed id, e.g. Equity.US.NVDA/USD."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "decimals",
+            "type": "u8"
+          },
+          {
+            "name": "target_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OraclePool",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "spread_bps",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RebalanceSwapped",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "by_keeper",
+            "type": "bool"
+          },
+          {
+            "name": "from_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "to_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount_in",
+            "type": "u64"
+          },
+          {
+            "name": "amount_out",
+            "type": "u64"
+          },
+          {
+            "name": "value_in_usd_micros",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "StockVault",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "strategy_id",
+            "type": "string"
+          },
+          {
+            "name": "target_weights",
+            "type": {
+              "vec": "u16"
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "last_rebalance_ts",
+            "type": "i64"
+          },
+          {
+            "name": "cooldown_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "total_rebalances",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

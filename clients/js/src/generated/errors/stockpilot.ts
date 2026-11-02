@@ -20,18 +20,74 @@ export const STOCKPILOT_ERROR__REBALANCE_COOLDOWN_ACTIVE = 0x1770; // 6000
 export const STOCKPILOT_ERROR__CALCULATION_OVERFLOW = 0x1771; // 6001
 /** InsufficientFunds: Insufficient funds in vault for withdrawal. */
 export const STOCKPILOT_ERROR__INSUFFICIENT_FUNDS = 0x1772; // 6002
+/** InvalidTokenAccount: Invalid token account owner. */
+export const STOCKPILOT_ERROR__INVALID_TOKEN_ACCOUNT = 0x1773; // 6003
+/** InvalidMint: Invalid token mint. */
+export const STOCKPILOT_ERROR__INVALID_MINT = 0x1774; // 6004
+/** Unauthorized: Unauthorized: caller is not the vault owner. */
+export const STOCKPILOT_ERROR__UNAUTHORIZED = 0x1775; // 6005
+/** InvalidConfig: Invalid autopilot configuration. */
+export const STOCKPILOT_ERROR__INVALID_CONFIG = 0x1776; // 6006
+/** InvalidAsset: Asset is not part of this vault's basket. */
+export const STOCKPILOT_ERROR__INVALID_ASSET = 0x1777; // 6007
+/** InvalidPriceAccount: Price account is not a valid, fully verified Pyth update for this asset. */
+export const STOCKPILOT_ERROR__INVALID_PRICE_ACCOUNT = 0x1778; // 6008
+/** StalePriceOrMarketClosed: Price is stale or the market is closed. */
+export const STOCKPILOT_ERROR__STALE_PRICE_OR_MARKET_CLOSED = 0x1779; // 6009
+/** PriceTooUncertain: Price confidence interval is too wide. */
+export const STOCKPILOT_ERROR__PRICE_TOO_UNCERTAIN = 0x177a; // 6010
+/** DriftBelowThreshold: Basket drift is below the rebalance threshold. */
+export const STOCKPILOT_ERROR__DRIFT_BELOW_THRESHOLD = 0x177b; // 6011
+/** TradeWorsensDrift: Trade would not move the basket toward its target weights. */
+export const STOCKPILOT_ERROR__TRADE_WORSENS_DRIFT = 0x177c; // 6012
+/** TradeTooLarge: Trade exceeds the per-rebalance size limit. */
+export const STOCKPILOT_ERROR__TRADE_TOO_LARGE = 0x177d; // 6013
+/** SlippageExceeded: Execution price is worse than the allowed slippage. */
+export const STOCKPILOT_ERROR__SLIPPAGE_EXCEEDED = 0x177e; // 6014
+/** InsufficientPoolLiquidity: Oracle pool does not have enough liquidity. */
+export const STOCKPILOT_ERROR__INSUFFICIENT_POOL_LIQUIDITY = 0x177f; // 6015
+/** BalanceCheckFailed: Vault balances did not change by the expected amounts. */
+export const STOCKPILOT_ERROR__BALANCE_CHECK_FAILED = 0x1780; // 6016
 
 export type StockpilotError =
+  | typeof STOCKPILOT_ERROR__BALANCE_CHECK_FAILED
   | typeof STOCKPILOT_ERROR__CALCULATION_OVERFLOW
+  | typeof STOCKPILOT_ERROR__DRIFT_BELOW_THRESHOLD
   | typeof STOCKPILOT_ERROR__INSUFFICIENT_FUNDS
-  | typeof STOCKPILOT_ERROR__REBALANCE_COOLDOWN_ACTIVE;
+  | typeof STOCKPILOT_ERROR__INSUFFICIENT_POOL_LIQUIDITY
+  | typeof STOCKPILOT_ERROR__INVALID_ASSET
+  | typeof STOCKPILOT_ERROR__INVALID_CONFIG
+  | typeof STOCKPILOT_ERROR__INVALID_MINT
+  | typeof STOCKPILOT_ERROR__INVALID_PRICE_ACCOUNT
+  | typeof STOCKPILOT_ERROR__INVALID_TOKEN_ACCOUNT
+  | typeof STOCKPILOT_ERROR__PRICE_TOO_UNCERTAIN
+  | typeof STOCKPILOT_ERROR__REBALANCE_COOLDOWN_ACTIVE
+  | typeof STOCKPILOT_ERROR__SLIPPAGE_EXCEEDED
+  | typeof STOCKPILOT_ERROR__STALE_PRICE_OR_MARKET_CLOSED
+  | typeof STOCKPILOT_ERROR__TRADE_TOO_LARGE
+  | typeof STOCKPILOT_ERROR__TRADE_WORSENS_DRIFT
+  | typeof STOCKPILOT_ERROR__UNAUTHORIZED;
 
 let stockpilotErrorMessages: Record<StockpilotError, string> | undefined;
 if (process.env["NODE_ENV"] !== "production") {
   stockpilotErrorMessages = {
+    [STOCKPILOT_ERROR__BALANCE_CHECK_FAILED]: `Vault balances did not change by the expected amounts.`,
     [STOCKPILOT_ERROR__CALCULATION_OVERFLOW]: `Math calculation overflow.`,
+    [STOCKPILOT_ERROR__DRIFT_BELOW_THRESHOLD]: `Basket drift is below the rebalance threshold.`,
     [STOCKPILOT_ERROR__INSUFFICIENT_FUNDS]: `Insufficient funds in vault for withdrawal.`,
+    [STOCKPILOT_ERROR__INSUFFICIENT_POOL_LIQUIDITY]: `Oracle pool does not have enough liquidity.`,
+    [STOCKPILOT_ERROR__INVALID_ASSET]: `Asset is not part of this vault's basket.`,
+    [STOCKPILOT_ERROR__INVALID_CONFIG]: `Invalid autopilot configuration.`,
+    [STOCKPILOT_ERROR__INVALID_MINT]: `Invalid token mint.`,
+    [STOCKPILOT_ERROR__INVALID_PRICE_ACCOUNT]: `Price account is not a valid, fully verified Pyth update for this asset.`,
+    [STOCKPILOT_ERROR__INVALID_TOKEN_ACCOUNT]: `Invalid token account owner.`,
+    [STOCKPILOT_ERROR__PRICE_TOO_UNCERTAIN]: `Price confidence interval is too wide.`,
     [STOCKPILOT_ERROR__REBALANCE_COOLDOWN_ACTIVE]: `Rebalance cooldown is active. Wait for the timelock to expire.`,
+    [STOCKPILOT_ERROR__SLIPPAGE_EXCEEDED]: `Execution price is worse than the allowed slippage.`,
+    [STOCKPILOT_ERROR__STALE_PRICE_OR_MARKET_CLOSED]: `Price is stale or the market is closed.`,
+    [STOCKPILOT_ERROR__TRADE_TOO_LARGE]: `Trade exceeds the per-rebalance size limit.`,
+    [STOCKPILOT_ERROR__TRADE_WORSENS_DRIFT]: `Trade would not move the basket toward its target weights.`,
+    [STOCKPILOT_ERROR__UNAUTHORIZED]: `Unauthorized: caller is not the vault owner.`,
   };
 }
 

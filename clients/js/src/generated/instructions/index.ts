@@ -6,8 +6,15 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from "./closeAutopilot";
+export * from "./closeOraclePool";
+export * from "./configureAutopilot";
 export * from "./deposit";
 export * from "./initializeVault";
+export * from "./initOraclePool";
 export * from "./rebalance";
+export * from "./rebalanceSwap";
+export * from "./revokeKeeper";
 export * from "./withdraw";
+export * from "./withdrawPoolLiquidity";
 export * from "./withdrawSol";

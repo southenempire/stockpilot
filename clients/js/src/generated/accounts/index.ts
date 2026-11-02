@@ -6,4 +6,6 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from "./autopilotConfig";
+export * from "./oraclePool";
 export * from "./stockVault";
