@@ -9,6 +9,7 @@ import { BasketStrategy, PortfolioHolding, RebalanceTx, Stock } from '@/types/st
 import { calculatePortfolioState, analyzeDrift } from '@/lib/solana/rebalance-engine';
 import { generateAiStrategy } from '@/lib/ai/strategy-generator';
 import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
+import { isSimulatedSignature, simulatedSignature } from '@/lib/solana/tx-utils';
 import HoldingRow from '@/components/HoldingRow';
 import StrategyCard from '@/components/StrategyCard';
 import RebalanceModal from '@/components/RebalanceModal';
@@ -122,7 +123,14 @@ export default function StockPilotApp() {
   const [activeTab, setActiveTab] = useState<'portfolio' | 'baskets' | 'ai' | 'vault'>('portfolio');
 
   // App & Wallet state: Solana Devnet
-  const [vaultCashReserveUsdc, setVaultCashReserveUsdc] = useState(0);
+  // Layer 1 cash reserve = what the vault PDA really holds on-chain, minus what the sandbox
+  // has moved into simulated Layer 2 baskets. The balance poll only refreshes the on-chain
+  // part, so it can no longer undo a deploy by overwriting the reserve.
+  const [onchainReserveUsdc, setOnchainReserveUsdc] = useState(0);
+  const [deployedFromReserveUsdc, setDeployedFromReserveUsdc] = useState(0);
+  const vaultCashReserveUsdc = Math.max(0, onchainReserveUsdc - deployedFromReserveUsdc);
+  // What was put into Layer 2 positions, for real PnL instead of a fixed benchmark number.
+  const [costBasisUsdc, setCostBasisUsdc] = useState(0);
   const [selectedStrategy, setSelectedStrategy] = useState<BasketStrategy>(PREBUILT_STRATEGIES[0]);
   const [driftTolerance, setDriftTolerance] = useState(5.0);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1D' | '1W' | '1M' | '1Y' | 'ALL'>('1M');
@@ -133,6 +141,11 @@ export default function StockPilotApp() {
   const [realUsdcBalance, setRealUsdcBalance] = useState<number | null>(null);
   const [realVaultBalance, setRealVaultBalance] = useState<number | null>(null);
   const [solPriceUsd, setSolPriceUsd] = useState<number>(138.50);
+  // Read inside the balance poll so it always values vault SOL at the latest price.
+  const solPriceRef = React.useRef(solPriceUsd);
+  useEffect(() => {
+    solPriceRef.current = solPriceUsd;
+  }, [solPriceUsd]);
   const [isLoadingRealBalances, setIsLoadingRealBalances] = useState<boolean>(false);
 
   // Derived user Vault PDA address on Solana Devnet
@@ -251,17 +264,7 @@ export default function StockPilotApp() {
   const [isSynthesizing, setIsSynthesizing] = useState(false);
 
   // On-chain log
-  const [txHistory, setTxHistory] = useState<RebalanceTx[]>([
-    {
-      id: 'tx_init',
-      timestamp: Date.now() - 7200000,
-      fromAsset: 'USDC',
-      toAsset: 'AI Compute Index',
-      amountUsdc: 1000,
-      txSignature: '4h9Km7uQ8rZ2xL9PnTv8W2k1Y5mC3xJ8vQ2L4aB7n9K',
-      reason: 'Vault initialized with AI Compute & Silicon Index on Solana Devnet',
-    },
-  ]);
+  const [txHistory, setTxHistory] = useState<RebalanceTx[]>([]);
 
   // Recalculate portfolio state for active equity positions (Layer 2)
   const { totalValueUsdc: activePositionsValue, holdings: computedHoldings } = calculatePortfolioState(
@@ -295,11 +298,10 @@ export default function StockPilotApp() {
           setRealSolBalance(data.sol);
           setRealUsdcBalance(data.usdc);
           setRealVaultBalance(data.vaultSol);
-          const currentPrice = solPriceUsd > 0 ? solPriceUsd : 140;
+          const currentPrice = solPriceRef.current > 0 ? solPriceRef.current : 140;
           const liveVaultReserveUsd = (data.vaultUsdc || 0) + ((data.vaultSol || 0) * currentPrice);
-          if (liveVaultReserveUsd > 0) {
-            setVaultCashReserveUsdc(liveVaultReserveUsd);
-          }
+          // Always take the on-chain value, including 0 after a full withdrawal.
+          setOnchainReserveUsdc(liveVaultReserveUsd);
         } else {
           console.warn('[StockPilot] Balance API returned success=false:', data);
         }
@@ -348,14 +350,14 @@ export default function StockPilotApp() {
   const liveSolVal = realSolBalance !== null ? realSolBalance * solPriceUsd : 0;
   const liveUsdcVal = realUsdcBalance !== null ? realUsdcBalance : 0;
   const liveVaultVal = realVaultBalance !== null ? realVaultBalance * solPriceUsd : 0;
-  const realTotalNetWorth = liveSolVal + liveUsdcVal + liveVaultVal;
 
-  // Active Portfolio Net Asset Value based on connected wallet & vault
-  const activeNetAssetValue = connected ? (realTotalNetWorth + totalValueUsdc) : 0;
+  // Active Portfolio Net Asset Value: wallet + vault (reserve and positions). The vault is
+  // counted once, through totalValueUsdc.
+  const activeNetAssetValue = connected ? (liveSolVal + liveUsdcVal + totalValueUsdc) : 0;
 
-  // PnL metrics
-  const pnlPercent = 14.82; // Benchmark index return
-  const pnlUsdc = totalValueUsdc > 0 ? totalValueUsdc * (pnlPercent / 100) : 0;
+  // PnL of Layer 2 positions against what was invested in them
+  const pnlUsdc = costBasisUsdc > 0 ? activePositionsValue - costBasisUsdc : 0;
+  const pnlPercent = costBasisUsdc > 0 ? Number(((pnlUsdc / costBasisUsdc) * 100).toFixed(2)) : 0;
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -388,7 +390,16 @@ export default function StockPilotApp() {
           const hasShares = parsed.holdings.some((h: any) => (h.shares || 0) > 0);
           if (hasShares) {
             setHoldings(parsed.holdings);
+            // Older saves have no cost basis: start PnL from the saved value.
+            setCostBasisUsdc(
+              typeof parsed.costBasisUsdc === 'number'
+                ? parsed.costBasisUsdc
+                : parsed.holdings.reduce((sum: number, h: any) => sum + (h.currentValue || 0), 0)
+            );
           }
+        }
+        if (typeof parsed.deployedFromReserveUsdc === 'number') {
+          setDeployedFromReserveUsdc(parsed.deployedFromReserveUsdc);
         }
         if (parsed.strategyId) {
           const matchedStrat = PREBUILT_STRATEGIES.find((s) => s.id === parsed.strategyId);
@@ -465,11 +476,13 @@ export default function StockPilotApp() {
           holdings,
           strategyId: selectedStrategy.id,
           txHistory,
+          costBasisUsdc,
+          deployedFromReserveUsdc,
           updatedAt: Date.now(),
         })
       );
     } catch {}
-  }, [connected, publicKey, holdings, selectedStrategy, txHistory]);
+  }, [connected, publicKey, holdings, selectedStrategy, txHistory, costBasisUsdc, deployedFromReserveUsdc]);
 
   // Handle strategy switch
   const handleSelectStrategy = (strat: BasketStrategy) => {
@@ -532,13 +545,7 @@ export default function StockPilotApp() {
     setLastRebalanced(Date.now());
     setCooldownSeconds(300);
 
-    const sig =
-      txSig ||
-      Array.from({ length: 44 }, () =>
-        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-          Math.floor(Math.random() * 58)
-        ]
-      ).join('');
+    const sig = txSig || simulatedSignature();
 
     setTxHistory((prev) => [
       {
@@ -580,7 +587,8 @@ export default function StockPilotApp() {
   ) => {
     if (amountToDeploy <= 0 || amountToDeploy > vaultCashReserveUsdc) return;
 
-    setVaultCashReserveUsdc((c) => Math.max(0, c - amountToDeploy));
+    setDeployedFromReserveUsdc((d) => d + amountToDeploy);
+    setCostBasisUsdc((c) => c + amountToDeploy);
     setSelectedStrategy(targetStrategy);
 
     setHoldings((prev) => {
@@ -605,11 +613,8 @@ export default function StockPilotApp() {
       });
     });
 
-    const sig = Array.from({ length: 44 }, () =>
-      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-        Math.floor(Math.random() * 58)
-      ]
-    ).join('');
+    // Layer 2 positions are simulated; the deploy itself sends no transaction.
+    const sig = simulatedSignature();
 
     setTxHistory((prev) => [
       {
@@ -641,13 +646,10 @@ export default function StockPilotApp() {
       }))
     );
 
-    setVaultCashReserveUsdc((c) => c + unwindVal);
+    setDeployedFromReserveUsdc((d) => Math.max(0, d - unwindVal));
+    setCostBasisUsdc((c) => c * remainRatio);
 
-    const sig = Array.from({ length: 44 }, () =>
-      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-        Math.floor(Math.random() * 58)
-      ]
-    ).join('');
+    const sig = simulatedSignature();
 
     setTxHistory((prev) => [
       {
@@ -671,8 +673,9 @@ export default function StockPilotApp() {
     destination: 'reserve' | 'strategy' = 'reserve'
   ) => {
 
+    // Optimistic until the next balance poll confirms the on-chain vault value.
+    setOnchainReserveUsdc((c) => c + amountUsdc);
     if (destination === 'reserve') {
-      setVaultCashReserveUsdc((c) => c + amountUsdc);
       setTxHistory((p) => [
         {
           id: `tx_dep_${Date.now()}`,
@@ -706,6 +709,8 @@ export default function StockPilotApp() {
         };
       });
       setHoldings(updated);
+      setDeployedFromReserveUsdc((d) => d + amountUsdc);
+      setCostBasisUsdc((c) => c + amountUsdc);
       setTxHistory((p) => [
         {
           id: `tx_dep_${Date.now()}`,
@@ -751,8 +756,8 @@ export default function StockPilotApp() {
     source: 'reserve' | 'positions' = 'reserve'
   ) => {
 
+    setOnchainReserveUsdc((c) => Math.max(0, c - amountUsdc));
     if (source === 'reserve') {
-      setVaultCashReserveUsdc((c) => Math.max(0, c - amountUsdc));
       if (asset === 'SOL') {
         const solVal = solPriceUsd > 0 ? amountUsdc / solPriceUsd : 0;
         setRealVaultBalance((prev) => (prev !== null ? Math.max(0, prev - solVal) : null));
@@ -773,6 +778,9 @@ export default function StockPilotApp() {
         ...prev,
       ]);
     } else {
+      const remain = activePositionsValue > 0 ? Math.max(0, (activePositionsValue - amountUsdc) / activePositionsValue) : 0;
+      setDeployedFromReserveUsdc((d) => Math.max(0, d - amountUsdc));
+      setCostBasisUsdc((c) => c * remain);
       setHoldings((prev) => {
         const currentVaultTotal = prev.reduce((sum, h) => sum + h.currentValue, 0);
         if (currentVaultTotal <= 0 || amountUsdc >= currentVaultTotal) {
@@ -844,6 +852,12 @@ export default function StockPilotApp() {
     paymentAmount: number;
     txSignature: string;
   }) => {
+    setCostBasisUsdc((c) => c + amountUsdc);
+    if (!isSimulatedSignature(txSignature)) {
+      // A real purchase deposited into the vault and went straight into positions.
+      setOnchainReserveUsdc((c) => c + amountUsdc);
+      setDeployedFromReserveUsdc((d) => d + amountUsdc);
+    }
     if (type === 'stock') {
       const stock = item as Stock;
       const price = livePrices[stock.symbol] || stock.price;
@@ -1136,7 +1150,7 @@ export default function StockPilotApp() {
                         <span>{pnlUsdc >= 0 ? `+$${pnlUsdc.toFixed(2)}` : `-$${Math.abs(pnlUsdc).toFixed(2)}`}</span>
                         <span>({pnlPercent >= 0 ? `+${pnlPercent}%` : `${pnlPercent}%`})</span>
                       </div>
-                      <span className="text-[11px] text-slate-400">24h drift</span>
+                      <span className="text-[11px] text-slate-400">since invested</span>
                     </div>
                   ) : (
                     <div className="text-[11px] font-mono text-[#00D2FF] flex items-center gap-1.5">

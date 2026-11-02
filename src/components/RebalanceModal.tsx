@@ -16,6 +16,7 @@ import { PortfolioHolding } from '@/types/stock';
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildRebalanceTransaction } from '@/lib/solana/contract-client';
+import { confirmOrThrow } from '@/lib/solana/tx-utils';
 
 interface RebalanceModalProps {
   isOpen: boolean;
@@ -85,7 +86,7 @@ export default function RebalanceModal({
       let sig = '';
 
       if (signTransaction) {
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
         tx.recentBlockhash = blockhash;
         tx.feePayer = activePublicKey;
 
@@ -112,36 +113,13 @@ export default function RebalanceModal({
         }
 
         // Confirm
-        try {
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Rebalance confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else if (sendTransaction) {
         sig = await sendTransaction(tx, connection, {
           preflightCommitment: 'confirmed',
         });
 
-        try {
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Rebalance confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else {
         throw new Error('No transaction signing provider found in connected wallet.');
       }
@@ -156,7 +134,7 @@ export default function RebalanceModal({
       const msg = String(err?.message || err || '');
       if (msg.includes('User rejected') || err?.name === 'WalletSignTransactionError') {
         setErrorMessage('Transaction was cancelled by user in wallet.');
-      } else if (msg.includes('RebalanceCooldownActive') || msg.includes('6002')) {
+      } else if (msg.includes('RebalanceCooldownActive') || msg.includes('0x1770')) {
         setErrorMessage('Rebalance cooldown is still active. Please wait for the 300-second window to expire.');
       } else {
         setErrorMessage(

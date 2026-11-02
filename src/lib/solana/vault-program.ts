@@ -29,7 +29,8 @@ export function calculateProtocolFee(amount: number): {
 }
 
 // Cooldown interval between automated rebalances to protect user from excessive slippage
-export const DEFAULT_REBALANCE_COOLDOWN_SECONDS = 3600; // 1 hour
+// Must match DEFAULT_COOLDOWN_SECONDS in anchor/programs/stockpilot/src/lib.rs
+export const DEFAULT_REBALANCE_COOLDOWN_SECONDS = 300; // 5 minutes
 
 export const STOCKPILOT_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_STOCKPILOT_PROGRAM_ID || 'CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK'

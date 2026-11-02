@@ -6,12 +6,19 @@ import {
   TransactionInstruction,
 } from '@solana/web3.js';
 import {
-  STOCKPILOT_PROGRAM_ID,
   derivePortfolioVaultPda,
   DEVNET_STOCK_MINTS,
   PROTOCOL_TREASURY_WALLET,
   PROTOCOL_FEE_BPS,
 } from './vault-program';
+import {
+  getDepositInstruction,
+  getInitializeVaultInstruction,
+  getRebalanceInstruction,
+  getWithdrawInstruction,
+  getWithdrawSolInstruction,
+} from '../../../clients/js/src/generated';
+import { kitAddress, toWeb3Instruction, walletSigner } from './kit-adapter';
 
 export const TOKEN_PROGRAM_ID = new PublicKey(
   'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
@@ -24,15 +31,6 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
 export const DEVNET_USDC_MINT = new PublicKey(
   DEVNET_STOCK_MINTS.USDC || '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'
 );
-
-// Anchor Instruction Discriminators from stockpilot IDL
-const DISCRIMINATORS = {
-  initialize_vault: Buffer.from([48, 191, 163, 44, 71, 129, 63, 164]),
-  deposit: Buffer.from([242, 35, 198, 137, 82, 225, 242, 182]),
-  withdraw: Buffer.from([183, 18, 70, 156, 148, 109, 161, 34]),
-  withdraw_sol: Buffer.from([145, 131, 74, 136, 65, 137, 42, 38]),
-  rebalance: Buffer.from([108, 158, 77, 9, 210, 52, 88, 62]),
-};
 
 /**
  * Derive the Associated Token Account (ATA) address for any owner & mint
@@ -76,35 +74,16 @@ export function createAssociatedTokenAccountIdempotentInstruction(
   });
 }
 
-function encodeU64(amount: bigint | number): Buffer {
-  const buf = Buffer.alloc(8);
-  buf.writeBigUInt64LE(BigInt(Math.floor(Number(amount))), 0);
-  return buf;
-}
-
-function encodeString(str: string): Buffer {
-  const strBuf = Buffer.from(str, 'utf8');
-  const lenBuf = Buffer.alloc(4);
-  lenBuf.writeUInt32LE(strBuf.length, 0);
-  return Buffer.concat([lenBuf, strBuf]);
-}
-
-function encodeU16Vec(values: number[]): Buffer {
-  const buf = Buffer.alloc(4 + values.length * 2);
-  buf.writeUInt32LE(values.length, 0);
-  values.forEach((v, i) => {
-    buf.writeUInt16LE(v, 4 + i * 2);
-  });
-  return buf;
-}
-
-function encodeI16Vec(values: number[]): Buffer {
-  const buf = Buffer.alloc(4 + values.length * 2);
-  buf.writeUInt32LE(values.length, 0);
-  values.forEach((v, i) => {
-    buf.writeInt16LE(v, 4 + i * 2);
-  });
-  return buf;
+/**
+ * Converts a UI amount to integer base units without float truncation
+ * (Math.floor(2.01 * 1e6) is 2009999, not 2010000).
+ */
+export function toBaseUnits(amount: number, decimals: number): bigint {
+  if (!Number.isFinite(amount) || amount < 0) {
+    throw new Error('Amount must be a positive number.');
+  }
+  const [whole, frac = ''] = amount.toFixed(decimals).split('.');
+  return BigInt(whole) * 10n ** BigInt(decimals) + BigInt(frac.padEnd(decimals, '0') || '0');
 }
 
 /**
@@ -116,21 +95,14 @@ export function createInitializeVaultInstruction(
   strategyId: string = 'ai_champions',
   targetWeights: number[] = [3500, 2500, 2000, 2000] // basis points
 ): TransactionInstruction {
-  const data = Buffer.concat([
-    DISCRIMINATORS.initialize_vault,
-    encodeString(strategyId),
-    encodeU16Vec(targetWeights),
-  ]);
-
-  return new TransactionInstruction({
-    programId: STOCKPILOT_PROGRAM_ID,
-    keys: [
-      { pubkey: owner, isSigner: true, isWritable: true },
-      { pubkey: vaultPda, isSigner: false, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ],
-    data,
-  });
+  return toWeb3Instruction(
+    getInitializeVaultInstruction({
+      owner: walletSigner(owner),
+      vault: kitAddress(vaultPda),
+      strategyId,
+      targetWeights,
+    })
+  );
 }
 
 /**
@@ -158,7 +130,8 @@ export function createSplTokenTransferInstruction(
 }
 
 /**
- * Instruction to deposit SPL tokens (e.g. USDC) into the StockPilot Vault
+ * Instruction to deposit SPL tokens (e.g. USDC) into the StockPilot Vault.
+ * The program takes the 0.15% protocol fee into the treasury token account.
  */
 export function createDepositInstruction(
   owner: PublicKey,
@@ -166,22 +139,20 @@ export function createDepositInstruction(
   mint: PublicKey,
   ownerTokenAccount: PublicKey,
   vaultTokenAccount: PublicKey,
+  treasuryTokenAccount: PublicKey,
   amount: bigint | number
 ): TransactionInstruction {
-  const data = Buffer.concat([DISCRIMINATORS.deposit, encodeU64(amount)]);
-
-  return new TransactionInstruction({
-    programId: STOCKPILOT_PROGRAM_ID,
-    keys: [
-      { pubkey: owner, isSigner: true, isWritable: true },
-      { pubkey: vaultPda, isSigner: false, isWritable: true },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: ownerTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    ],
-    data,
-  });
+  return toWeb3Instruction(
+    getDepositInstruction({
+      owner: walletSigner(owner),
+      vault: kitAddress(vaultPda),
+      mint: kitAddress(mint),
+      ownerTokenAccount: kitAddress(ownerTokenAccount),
+      vaultTokenAccount: kitAddress(vaultTokenAccount),
+      treasuryTokenAccount: kitAddress(treasuryTokenAccount),
+      amount: BigInt(amount),
+    })
+  );
 }
 
 /**
@@ -195,20 +166,16 @@ export function createWithdrawInstruction(
   ownerTokenAccount: PublicKey,
   amount: bigint | number
 ): TransactionInstruction {
-  const data = Buffer.concat([DISCRIMINATORS.withdraw, encodeU64(amount)]);
-
-  return new TransactionInstruction({
-    programId: STOCKPILOT_PROGRAM_ID,
-    keys: [
-      { pubkey: owner, isSigner: true, isWritable: true },
-      { pubkey: vaultPda, isSigner: false, isWritable: true },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: vaultTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: ownerTokenAccount, isSigner: false, isWritable: true },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-    ],
-    data,
-  });
+  return toWeb3Instruction(
+    getWithdrawInstruction({
+      owner: walletSigner(owner),
+      vault: kitAddress(vaultPda),
+      mint: kitAddress(mint),
+      vaultTokenAccount: kitAddress(vaultTokenAccount),
+      ownerTokenAccount: kitAddress(ownerTokenAccount),
+      amount: BigInt(amount),
+    })
+  );
 }
 
 /**
@@ -219,20 +186,13 @@ export function createWithdrawSolInstruction(
   vaultPda: PublicKey,
   amountLamports: bigint | number
 ): TransactionInstruction {
-  const data = Buffer.concat([
-    DISCRIMINATORS.withdraw_sol,
-    encodeU64(amountLamports),
-  ]);
-
-  return new TransactionInstruction({
-    programId: STOCKPILOT_PROGRAM_ID,
-    keys: [
-      { pubkey: owner, isSigner: true, isWritable: true },
-      { pubkey: vaultPda, isSigner: false, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ],
-    data,
-  });
+  return toWeb3Instruction(
+    getWithdrawSolInstruction({
+      owner: walletSigner(owner),
+      vault: kitAddress(vaultPda),
+      amount: BigInt(amountLamports),
+    })
+  );
 }
 
 /**
@@ -243,19 +203,13 @@ export function createRebalanceInstruction(
   vaultPda: PublicKey,
   driftBps: number[] = [0, 0, 0, 0]
 ): TransactionInstruction {
-  const data = Buffer.concat([
-    DISCRIMINATORS.rebalance,
-    encodeI16Vec(driftBps),
-  ]);
-
-  return new TransactionInstruction({
-    programId: STOCKPILOT_PROGRAM_ID,
-    keys: [
-      { pubkey: authority, isSigner: true, isWritable: false },
-      { pubkey: vaultPda, isSigner: false, isWritable: true },
-    ],
-    data,
-  });
+  return toWeb3Instruction(
+    getRebalanceInstruction({
+      authority: walletSigner(authority),
+      vault: kitAddress(vaultPda),
+      driftBps,
+    })
+  );
 }
 
 /**
@@ -284,7 +238,7 @@ export async function buildDepositTransaction(
   const feePercent = PROTOCOL_FEE_BPS / 10000;
 
   if (asset === 'SOL') {
-    const totalLamports = Math.floor(amount * 1_000_000_000);
+    const totalLamports = Number(toBaseUnits(amount, 9));
     const feeLamports = Math.floor(totalLamports * feePercent);
     const vaultLamports = totalLamports - feeLamports;
 
@@ -309,9 +263,7 @@ export async function buildDepositTransaction(
     );
   } else {
     // USDC deposit (6 decimals)
-    const totalAmountU64 = BigInt(Math.floor(amount * 1_000_000));
-    const feeUnits = BigInt(Math.floor(Number(totalAmountU64) * feePercent));
-    const vaultUnits = totalAmountU64 - feeUnits;
+    const totalAmountU64 = toBaseUnits(amount, 6);
 
     const userAta = getAssociatedTokenAddressSync(DEVNET_USDC_MINT, userPubkey);
     const vaultAta = getAssociatedTokenAddressSync(DEVNET_USDC_MINT, vaultPda, true);
@@ -355,6 +307,7 @@ export async function buildDepositTransaction(
         DEVNET_USDC_MINT,
         userAta,
         vaultAta,
+        treasuryAta,
         totalAmountU64
       )
     );
@@ -379,7 +332,7 @@ export async function buildWithdrawTransaction(
   const tx = new Transaction();
 
   if (asset === 'SOL') {
-    let lamports = Math.floor(amount * 1_000_000_000);
+    let lamports = Number(toBaseUnits(amount, 9));
     const vaultInfo = await connection.getAccountInfo(vaultPda);
 
     if (!vaultInfo) {
@@ -410,7 +363,7 @@ export async function buildWithdrawTransaction(
     }
   } else {
     // USDC withdrawal (6 decimals)
-    const amountU64 = BigInt(Math.floor(amount * 1_000_000));
+    const amountU64 = toBaseUnits(amount, 6);
     const userAta = getAssociatedTokenAddressSync(DEVNET_USDC_MINT, userPubkey);
     const vaultAta = getAssociatedTokenAddressSync(DEVNET_USDC_MINT, vaultPda, true);
 

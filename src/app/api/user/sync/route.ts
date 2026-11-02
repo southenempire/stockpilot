@@ -41,6 +41,9 @@ export async function POST(req: NextRequest) {
           getSupabaseCustomStrategies(hashedId),
           getSupabaseRecentActivity(hashedId, 25),
         ]);
+        if (strategiesRes.error || activityRes.error) {
+          throw strategiesRes.error || activityRes.error;
+        }
 
         const strategies = (strategiesRes.data || []).map((s: any) => ({
           id: s.id,

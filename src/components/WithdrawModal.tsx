@@ -16,6 +16,7 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildWithdrawTransaction } from '../lib/solana/contract-client';
+import { confirmOrThrow } from '../lib/solana/tx-utils';
 
 interface WithdrawModalProps {
   isOpen: boolean;
@@ -198,7 +199,7 @@ export default function WithdrawModal({
       let sig = '';
 
       if (signTransaction) {
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
         tx.recentBlockhash = blockhash;
         tx.feePayer = activePublicKey;
 
@@ -225,36 +226,13 @@ export default function WithdrawModal({
         }
 
         // Confirm transaction
-        try {
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else if (sendTransaction) {
         sig = await sendTransaction(tx, connection, {
           preflightCommitment: 'confirmed',
         });
 
-        try {
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else {
         throw new Error('No transaction signing provider found in connected wallet.');
       }

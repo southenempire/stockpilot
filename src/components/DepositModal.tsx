@@ -16,6 +16,7 @@ import {
 import { PublicKey } from '@solana/web3.js';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildDepositTransaction } from '../lib/solana/contract-client';
+import { confirmOrThrow } from '../lib/solana/tx-utils';
 
 interface StrategyHolding {
   symbol: string;
@@ -140,7 +141,7 @@ export default function DepositModal({
       let sig = '';
 
       if (signTransaction) {
-        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+        const { blockhash } = await connection.getLatestBlockhash('confirmed');
         tx.recentBlockhash = blockhash;
         tx.feePayer = activePublicKey;
 
@@ -167,36 +168,13 @@ export default function DepositModal({
         }
 
         // Confirm
-        try {
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Deposit confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else if (sendTransaction) {
         sig = await sendTransaction(tx, connection, {
           preflightCommitment: 'confirmed',
         });
 
-        try {
-          const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction(
-            {
-              signature: sig,
-              blockhash,
-              lastValidBlockHeight,
-            },
-            'confirmed'
-          );
-        } catch (cErr: any) {
-          console.warn('[StockPilot] Deposit confirmation check note:', cErr?.message);
-        }
+        await confirmOrThrow(connection, sig);
       } else {
         throw new Error('No transaction signing provider found in connected wallet.');
       }

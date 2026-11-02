@@ -18,6 +18,7 @@ import { BasketStrategy, Stock } from '@/types/stock';
 import { SUPPORTED_STOCKS } from '@/data/stocks';
 import { derivePortfolioVaultPda, PROTOCOL_TREASURY_WALLET, PROTOCOL_FEE_BPS } from '@/lib/solana/vault-program';
 import { buildDepositTransaction } from '@/lib/solana/contract-client';
+import { confirmOrThrow, simulatedSignature, txExplorerUrl } from '@/lib/solana/tx-utils';
 
 interface BuyModalProps {
   isOpen: boolean;
@@ -102,9 +103,7 @@ export default function BuyModal({
     setErrorMessage(null);
     setMismatchedAccount(null);
 
-    const simulatedSig = Array.from({ length: 44 }, () =>
-      '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
-    ).join('');
+    const simulatedSig = simulatedSignature();
 
     setTimeout(() => {
       setTxSignature(simulatedSig);
@@ -232,16 +231,7 @@ export default function BuyModal({
       let signature = '';
       try {
         signature = await sendTransaction(transaction, connection);
-        try {
-          const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-          await connection.confirmTransaction({
-            signature,
-            blockhash: latestBlockhash.blockhash,
-            lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-          }, 'confirmed');
-        } catch {
-          // Confirmation poll fallback
-        }
+        await confirmOrThrow(connection, signature);
       } catch (walletErr: any) {
         const errorMsg = String(walletErr?.message || walletErr || '');
         if (errorMsg.includes('User rejected') || walletErr?.name === 'WalletSignTransactionError') {
@@ -257,9 +247,8 @@ export default function BuyModal({
           );
         }
 
-        signature = Array.from({ length: 44 }, () =>
-          '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[Math.floor(Math.random() * 58)]
-        ).join('');
+        // Any other failure means nothing was bought; never report it as a purchase.
+        throw new Error(errorMsg.slice(0, 160) || 'Purchase transaction failed on Devnet.');
       }
 
       setTxSignature(signature);
@@ -276,6 +265,7 @@ export default function BuyModal({
       });
     } catch (err: any) {
       console.error('Buy execution error:', err);
+      setIsSubmitting(false);
       setErrorMessage(err?.message || 'Failed to execute purchase transaction on Devnet.');
     }
   };
@@ -344,11 +334,11 @@ export default function BuyModal({
                 </p>
               </div>
 
-              {txSignature && (
+              {txExplorerUrl(txSignature) && (
                 <div className="p-3 rounded-xl bg-black/30 border border-white/10 text-xs font-mono break-all text-left space-y-1">
                   <div className="text-[10px] text-slate-400 uppercase">Solana Devnet Signature:</div>
                   <a
-                    href={`https://explorer.solana.com/tx/${txSignature}?cluster=devnet`}
+                    href={txExplorerUrl(txSignature)!}
                     target="_blank"
                     rel="noreferrer"
                     className="text-[#00D2FF] hover:underline block text-[11px]"

@@ -37,7 +37,7 @@ export default function SocialFlexCardModal({
 
   const isLight = theme === 'light';
 
-  const shareText = `Managing my autonomous tokenized stock index "${strategyName}" 24/7 on @solana Devnet with @StockPilotSOL! ⚡\n\nReturn: +${pnlPercent}% • <$0.001 gas • Zero market close 📈\n\nAutomate your portfolio on Solana:`;
+  const shareText = `Managing my autonomous tokenized stock index "${strategyName}" 24/7 on @solana Devnet with @StockPilotSOL! ⚡\n\nReturn: ${pnlPercent >= 0 ? '+' : ''}${pnlPercent}% • <$0.001 gas • Zero market close 📈\n\nAutomate your portfolio on Solana:`;
 
   const handleShareTwitter = () => {
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`;
@@ -107,7 +107,7 @@ export default function SocialFlexCardModal({
                 <div className="text-[10px] uppercase text-slate-500 font-mono">Autopilot Gain</div>
                 <div className="flex items-center gap-1.5 text-base font-extrabold font-mono text-emerald-400">
                   <FontAwesomeIcon icon={faArrowTrendUp} className="w-4 h-4" />
-                  <span>+{pnlPercent}%</span>
+                  <span>{pnlPercent >= 0 ? '+' : ''}{pnlPercent}%</span>
                 </div>
               </div>
             </div>

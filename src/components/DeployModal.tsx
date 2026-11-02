@@ -13,6 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { buildRebalanceTransaction } from '@/lib/solana/contract-client';
+import { confirmOrThrow, simulatedSignature, txExplorerUrl } from '@/lib/solana/tx-utils';
 import { BasketStrategy } from '../types/stock';
 import { PREBUILT_STRATEGIES } from '../data/strategies';
 
@@ -91,40 +92,28 @@ export default function DeployModal({
           const sig = await sendTransaction(tx, connection);
           setTxSignature(sig);
 
-          try {
-            const latestBlockhash = await connection.getLatestBlockhash('confirmed');
-            await connection.confirmTransaction(
-              {
-                signature: sig,
-                blockhash: latestBlockhash.blockhash,
-                lastValidBlockHeight: latestBlockhash.lastValidBlockHeight,
-              },
-              'confirmed'
-            );
-          } catch {
-            // Timeout fallback - signature still broadcasts
-          }
+          await confirmOrThrow(connection, sig);
 
           setTxSuccess(true);
           setIsSubmitting(false);
           onDeploySuccess(parsedAmount, targetStrategy, sig);
           return;
         } catch (onChainErr: any) {
+          // A failed transaction must not be reported as a deploy.
           const errorMsg = String(onChainErr?.message || onChainErr || '');
           if (errorMsg.includes('User rejected') || onChainErr?.name === 'WalletSignTransactionError') {
             throw new Error('Transaction was cancelled by user in wallet.');
           }
-          console.warn('[StockPilot] On-chain deploy notice (falling back to simulated execution):', errorMsg);
+          if (errorMsg.includes('0x1770') || errorMsg.includes('RebalanceCooldownActive')) {
+            throw new Error('Vault cooldown is active (5 minutes between rebalances). Try again shortly.');
+          }
+          throw new Error(errorMsg.slice(0, 160) || 'Deploy transaction failed.');
         }
       }
 
+      // No wallet connected: sandbox-only deploy, clearly marked as simulated.
       await new Promise((r) => setTimeout(r, 800));
-
-      const simulatedSig = Array.from({ length: 44 }, () =>
-        '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'[
-          Math.floor(Math.random() * 58)
-        ]
-      ).join('');
+      const simulatedSig = simulatedSignature();
 
       setTxSignature(simulatedSig);
       setIsSubmitting(false);
@@ -186,17 +175,21 @@ export default function DeployModal({
             >
               <div className="flex items-center justify-between text-slate-400 text-[10px]">
                 <span>Transaction Hash:</span>
-                <span className="text-emerald-400 font-sans font-bold">Confirmed</span>
+                <span className="text-emerald-400 font-sans font-bold">{txExplorerUrl(txSignature) ? 'Confirmed' : 'Simulated'}</span>
               </div>
-              <a
-                href={`https://solscan.io/tx/${txSignature}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#00D2FF] hover:underline flex items-center justify-between gap-1 truncate text-[11px]"
-              >
-                <span className="truncate">{txSignature}</span>
-                <FontAwesomeIcon icon={faExternalLink} className="w-2.5 h-2.5 shrink-0" />
-              </a>
+              {txExplorerUrl(txSignature) ? (
+                <a
+                  href={txExplorerUrl(txSignature)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#00D2FF] hover:underline flex items-center justify-between gap-1 truncate text-[11px]"
+                >
+                  <span className="truncate">{txSignature}</span>
+                  <FontAwesomeIcon icon={faExternalLink} className="w-2.5 h-2.5 shrink-0" />
+                </a>
+              ) : (
+                <span className="text-slate-400 truncate text-[11px]">Simulated (sandbox, no transaction sent)</span>
+              )}
               <div className="text-slate-400 text-[10px] pt-1">
                 Execution: Sub-second Pyth Swap
               </div>

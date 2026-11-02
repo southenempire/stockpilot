@@ -70,7 +70,8 @@ export async function POST(req: NextRequest) {
     const hashedId = hashUserId(rawIdentifier);
     const actType = sanitizeString(activityType, 32);
     const actAsset = sanitizeString(asset || 'USDC', 16);
-    const actAmount = parseFloat(amount) || 0;
+    const parsedAmount = parseFloat(amount);
+    const actAmount = Number.isFinite(parsedAmount) ? parsedAmount : 0;
     const sig = sanitizeString(txSignature || '', 128);
     const actReason = sanitizeString(reason || '', 255);
     const now = Date.now();

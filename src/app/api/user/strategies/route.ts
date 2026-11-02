@@ -85,7 +85,9 @@ export async function POST(req: NextRequest) {
     const description = sanitizeString(strategy.description || '', 255);
     const targetWeightsJson = JSON.stringify(strategy.targetWeights || {});
     const now = Date.now();
-    const id = strategy.id || `strat_${randomUUID().slice(0, 8)}`;
+    const requestedId = typeof strategy.id === 'string' ? sanitizeString(strategy.id, 64) : '';
+    const newId = `strat_${randomUUID().slice(0, 8)}`;
+    let id = newId;
 
     // Prefer Supabase if configured
     if (isSupabaseConfigured()) {
@@ -97,8 +99,9 @@ export async function POST(req: NextRequest) {
           now,
         });
 
-        await saveSupabaseCustomStrategy({
-          id,
+        id = await saveSupabaseCustomStrategy({
+          id: requestedId || undefined,
+          newId,
           userHashedId: hashedId,
           name,
           description,
@@ -136,11 +139,26 @@ export async function POST(req: NextRequest) {
       insertUser.run(hashedId, now, now);
     }
 
-    const insertStrat = db.prepare(`
-      INSERT OR REPLACE INTO custom_strategies (id, user_hashed_id, name, description, target_weights_json, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    insertStrat.run(id, hashedId, name, description, targetWeightsJson, now, now);
+    // Only update a strategy this user owns; never let a client-chosen id replace someone else's row.
+    let updated = 0;
+    if (requestedId) {
+      const updateStrat = db.prepare(`
+        UPDATE custom_strategies
+        SET name = ?, description = ?, target_weights_json = ?, updated_at = ?
+        WHERE id = ? AND user_hashed_id = ?
+      `);
+      updated = Number(updateStrat.run(name, description, targetWeightsJson, now, requestedId, hashedId).changes);
+    }
+    if (updated > 0) {
+      id = requestedId;
+    } else {
+      const insertStrat = db.prepare(`
+        INSERT INTO custom_strategies (id, user_hashed_id, name, description, target_weights_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+      insertStrat.run(newId, hashedId, name, description, targetWeightsJson, now, now);
+      id = newId;
+    }
 
     return NextResponse.json({
       success: true,

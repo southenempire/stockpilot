@@ -76,6 +76,13 @@ async function supabaseFetch<T>(
   }
 }
 
+/** supabaseFetch reports errors instead of throwing; writes must throw so callers can fall back. */
+async function must<T>(op: Promise<{ data: T | null; error: any }>): Promise<T | null> {
+  const { data, error } = await op;
+  if (error) throw error;
+  return data;
+}
+
 // ==========================================
 // User Operations
 // ==========================================
@@ -87,8 +94,8 @@ export async function upsertSupabaseUser(user: {
   now: number;
   settingsJson?: string | null;
 }) {
-  const { data: existing } = await supabaseFetch<any[]>(
-    `users?hashed_id=eq.${encodeURIComponent(user.hashedId)}&select=*`
+  const existing = await must(
+    supabaseFetch<any[]>(`users?hashed_id=eq.${encodeURIComponent(user.hashedId)}&select=*`)
   );
 
   if (existing && existing.length > 0) {
@@ -97,26 +104,27 @@ export async function upsertSupabaseUser(user: {
     if (user.displayName) {
       updatePayload.display_name = user.displayName;
     }
-    return supabaseFetch(
-      `users?hashed_id=eq.${encodeURIComponent(user.hashedId)}`,
-      {
+    return must(
+      supabaseFetch(`users?hashed_id=eq.${encodeURIComponent(user.hashedId)}`, {
         method: 'PATCH',
         body: updatePayload,
-      }
+      })
     );
   } else {
     // Insert new user
-    return supabaseFetch('users', {
-      method: 'POST',
-      body: {
-        hashed_id: user.hashedId,
-        auth_provider: user.authProvider,
-        display_name: user.displayName || '',
-        created_at: user.now,
-        last_active_at: user.now,
-        settings_json: user.settingsJson || null,
-      },
-    });
+    return must(
+      supabaseFetch('users', {
+        method: 'POST',
+        body: {
+          hashed_id: user.hashedId,
+          auth_provider: user.authProvider,
+          display_name: user.displayName || '',
+          created_at: user.now,
+          last_active_at: user.now,
+          settings_json: user.settingsJson || null,
+        },
+      })
+    );
   }
 }
 
@@ -134,7 +142,7 @@ export async function logSupabaseActivity(activity: {
   reason?: string;
   createdAt: number;
 }) {
-  return supabaseFetch('activity_logs', {
+  return must(supabaseFetch('activity_logs', {
     method: 'POST',
     body: {
       id: activity.id,
@@ -146,7 +154,7 @@ export async function logSupabaseActivity(activity: {
       reason: activity.reason || '',
       created_at: activity.createdAt,
     },
-  });
+  }));
 }
 
 export async function getSupabaseRecentActivity(userHashedId: string, limit = 50) {
@@ -171,25 +179,55 @@ export async function getSupabaseCustomStrategies(userHashedId: string) {
   return { data: data || [], error };
 }
 
+/**
+ * Saves a strategy and returns its id. A client-supplied id only updates a row that already
+ * belongs to this user; anything else is inserted under `newId`, so one user can never
+ * overwrite another user's strategy by guessing its id.
+ */
 export async function saveSupabaseCustomStrategy(strategy: {
-  id: string;
+  id?: string;
+  newId: string;
   userHashedId: string;
   name: string;
   description?: string;
   targetWeightsJson: string;
   createdAt: number;
   updatedAt: number;
-}) {
-  return supabaseFetch('custom_strategies', {
-    method: 'POST',
-    body: {
-      id: strategy.id,
-      user_hashed_id: strategy.userHashedId,
-      name: strategy.name,
-      description: strategy.description || '',
-      target_weights_json: strategy.targetWeightsJson,
-      created_at: strategy.createdAt,
-      updated_at: strategy.updatedAt,
-    },
-  });
+}): Promise<string> {
+  if (strategy.id) {
+    const updated = await must(
+      supabaseFetch<any[]>(
+        `custom_strategies?id=eq.${encodeURIComponent(strategy.id)}&user_hashed_id=eq.${encodeURIComponent(
+          strategy.userHashedId
+        )}`,
+        {
+          method: 'PATCH',
+          prefer: 'return=representation',
+          body: {
+            name: strategy.name,
+            description: strategy.description || '',
+            target_weights_json: strategy.targetWeightsJson,
+            updated_at: strategy.updatedAt,
+          },
+        }
+      )
+    );
+    if (updated && updated.length > 0) return strategy.id;
+  }
+
+  await must(
+    supabaseFetch('custom_strategies', {
+      method: 'POST',
+      body: {
+        id: strategy.newId,
+        user_hashed_id: strategy.userHashedId,
+        name: strategy.name,
+        description: strategy.description || '',
+        target_weights_json: strategy.targetWeightsJson,
+        created_at: strategy.createdAt,
+        updated_at: strategy.updatedAt,
+      },
+    })
+  );
+  return strategy.newId;
 }

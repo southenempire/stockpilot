@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { PublicKey } from "@solana/web3.js";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,6 +71,15 @@ export async function POST(request: Request) {
   if (!wallet) {
     return NextResponse.json(
       { error: "Wallet address is required" },
+      { status: 400 }
+    );
+  }
+
+  try {
+    new PublicKey(wallet);
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid Solana address" },
       { status: 400 }
     );
   }
