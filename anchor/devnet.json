@@ -1,0 +1,40 @@
+{
+  "programId": "CsiP2ZWy1bM6Ghye85r67kiLC2zkBC7FngYCYGAhEPgK",
+  "pool": "Go7Q3NAVKi5n7yMiCFapvfsGG3R44wspbG2FtLPeGDjF",
+  "poolAdmin": "FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb",
+  "spreadBps": 30,
+  "assets": [
+    {
+      "symbol": "NVDAx",
+      "ticker": "Equity.US.NVDA/USD",
+      "feedId": "b1073854ed24cbc755dc527418f52b7d271f6cc967bbf8d8129112b18860a593",
+      "mint": "49TCN9cnFu8YzkpcgRQn2g51f5TW6uSccobKGCnSGhe2",
+      "decimals": 6,
+      "poolTokenAccount": "9f2JZej18Dh1AyDZhPwRXCwAQvu364iH5YZLnSL9cmdV"
+    },
+    {
+      "symbol": "AAPLx",
+      "ticker": "Equity.US.AAPL/USD",
+      "feedId": "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688",
+      "mint": "21yoT8TCkw1eqFRVrvPjzyDmYWbNmFGidL4h1DmjAX6u",
+      "decimals": 6,
+      "poolTokenAccount": "2dFbRu6a17dDoQbbS6sBdHdhihQKUjYZwMqFz6oPLL1A"
+    },
+    {
+      "symbol": "MSFTx",
+      "ticker": "Equity.US.MSFT/USD",
+      "feedId": "d0ca23c1cc005e004ccf1db5bf76aeb6a49218f43dac3d4b275e92de12ded4d1",
+      "mint": "47HprsDbk8bzGECunnNz14qBSVbbtrZbjgFdaRrqwbrN",
+      "decimals": 6,
+      "poolTokenAccount": "EvvtMt3xnR29pQ3ZzdmRvjot1BXhsQtACWMdXqbm7xg9"
+    },
+    {
+      "symbol": "TSLAx",
+      "ticker": "Equity.US.TSLA/USD",
+      "feedId": "16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1",
+      "mint": "DH15AHwKUzALPQfu1tBTnKQfrMy9uaePMXL6X9b5xCHJ",
+      "decimals": 6,
+      "poolTokenAccount": "4fHvsAWcKbiGzZY1uz1fp5a29nqfuujGUjpdmhuxmMS6"
+    }
+  ]
+}
