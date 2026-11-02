@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/server/db';
 import { hashUserId, sanitizeString } from '@/lib/server/security';
+import { requireSession } from '@/lib/server/require-session';
 import {
   isSupabaseConfigured,
   upsertSupabaseUser,
@@ -13,14 +14,10 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { rawIdentifier, authProvider, displayName, settings } = body;
 
-    if (!rawIdentifier || typeof rawIdentifier !== 'string') {
-      return NextResponse.json(
-        { success: false, error: 'rawIdentifier is required' },
-        { status: 400 }
-      );
-    }
+    const session = requireSession(req, rawIdentifier);
+    if ('response' in session) return session.response;
 
-    const hashedId = hashUserId(rawIdentifier);
+    const hashedId = hashUserId(session.address);
     const provider = sanitizeString(authProvider || 'solana_wallet', 32);
     const name = sanitizeString(displayName || '', 64);
     const settingsStr = settings ? JSON.stringify(settings) : null;

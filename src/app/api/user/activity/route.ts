@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/server/db';
 import { hashUserId, sanitizeString } from '@/lib/server/security';
+import { requireSession } from '@/lib/server/require-session';
 import {
   isSupabaseConfigured,
   logSupabaseActivity,
@@ -12,16 +13,10 @@ import { randomUUID } from 'node:crypto';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const rawIdentifier = searchParams.get('rawIdentifier');
+    const session = requireSession(req, searchParams.get('rawIdentifier'));
+    if ('response' in session) return session.response;
 
-    if (!rawIdentifier) {
-      return NextResponse.json(
-        { success: false, error: 'rawIdentifier query param is required' },
-        { status: 400 }
-      );
-    }
-
-    const hashedId = hashUserId(rawIdentifier);
+    const hashedId = hashUserId(session.address);
 
     // Prefer Supabase if configured
     if (isSupabaseConfigured()) {
@@ -60,14 +55,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { rawIdentifier, activityType, asset, amount, txSignature, reason } = body;
 
-    if (!rawIdentifier || !activityType) {
+    const session = requireSession(req, rawIdentifier);
+    if ('response' in session) return session.response;
+
+    if (!activityType) {
       return NextResponse.json(
-        { success: false, error: 'rawIdentifier and activityType are required' },
+        { success: false, error: 'activityType is required' },
         { status: 400 }
       );
     }
 
-    const hashedId = hashUserId(rawIdentifier);
+    const hashedId = hashUserId(session.address);
     const actType = sanitizeString(activityType, 32);
     const actAsset = sanitizeString(asset || 'USDC', 16);
     const parsedAmount = parseFloat(amount);

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDatabase } from '@/lib/server/db';
 import { hashUserId, sanitizeString } from '@/lib/server/security';
+import { requireSession } from '@/lib/server/require-session';
 import {
   isSupabaseConfigured,
   getSupabaseCustomStrategies,
@@ -12,16 +13,10 @@ import { randomUUID } from 'node:crypto';
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const rawIdentifier = searchParams.get('rawIdentifier');
+    const session = requireSession(req, searchParams.get('rawIdentifier'));
+    if ('response' in session) return session.response;
 
-    if (!rawIdentifier) {
-      return NextResponse.json(
-        { success: false, error: 'rawIdentifier query param is required' },
-        { status: 400 }
-      );
-    }
-
-    const hashedId = hashUserId(rawIdentifier);
+    const hashedId = hashUserId(session.address);
 
     // Prefer Supabase if configured
     if (isSupabaseConfigured()) {
@@ -73,14 +68,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { rawIdentifier, strategy } = body;
 
-    if (!rawIdentifier || !strategy || !strategy.name) {
+    const session = requireSession(req, rawIdentifier);
+    if ('response' in session) return session.response;
+
+    if (!strategy || !strategy.name) {
       return NextResponse.json(
-        { success: false, error: 'rawIdentifier and strategy object are required' },
+        { success: false, error: 'strategy object is required' },
         { status: 400 }
       );
     }
 
-    const hashedId = hashUserId(rawIdentifier);
+    const hashedId = hashUserId(session.address);
     const name = sanitizeString(strategy.name, 64);
     const description = sanitizeString(strategy.description || '', 255);
     const targetWeightsJson = JSON.stringify(strategy.targetWeights || {});

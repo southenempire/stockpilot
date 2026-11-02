@@ -10,6 +10,7 @@ import { calculatePortfolioState, analyzeDrift } from '@/lib/solana/rebalance-en
 import { generateAiStrategy } from '@/lib/ai/strategy-generator';
 import { derivePortfolioVaultPda } from '@/lib/solana/vault-program';
 import { isSimulatedSignature, simulatedSignature } from '@/lib/solana/tx-utils';
+import { ensureWalletSession } from '@/lib/client/wallet-session';
 import HoldingRow from '@/components/HoldingRow';
 import StrategyCard from '@/components/StrategyCard';
 import RebalanceModal from '@/components/RebalanceModal';
@@ -84,7 +85,9 @@ export default function StockPilotApp() {
 
   // Solana Wallet Adapter Hooks
   const { setVisible: openWalletModal } = useWalletModal();
-  const { publicKey: adapterPublicKey, connected: adapterConnected, disconnect } = useWallet();
+  const { publicKey: adapterPublicKey, connected: adapterConnected, disconnect, signMessage } = useWallet();
+  // Wallet that declined the sign-in prompt this page load, so we don't ask again on every re-render.
+  const declinedSignInRef = React.useRef<string | null>(null);
   const { connection } = useConnection();
   const { login: privyLogin, logout: privyLogout, authenticated: privyAuthenticated, user: privyUser } = usePrivy();
 
@@ -412,9 +415,20 @@ export default function StockPilotApp() {
       console.warn('Local storage hydration error:', cacheErr);
     }
 
-    // 2. Synchronize with backend database (Supabase / SQLite)
+    // 2. Synchronize with backend database (Supabase / SQLite). The user APIs need a
+    // wallet-signed session; without one the app keeps working from local storage.
     const syncUserBackend = async () => {
       try {
+        if (declinedSignInRef.current === walletKey) return;
+        let signedIn = false;
+        try {
+          signedIn = await ensureWalletSession(walletKey, signMessage);
+        } catch (authErr) {
+          declinedSignInRef.current = walletKey;
+          console.warn('Wallet sign-in skipped:', authErr);
+        }
+        if (!signedIn) return;
+
         const res = await fetch('/api/user/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -460,7 +474,7 @@ export default function StockPilotApp() {
     };
 
     syncUserBackend();
-  }, [connected, publicKey, privySolanaAddress, privyUser]);
+  }, [connected, publicKey, privySolanaAddress, privyUser, signMessage]);
 
   // Auto-save active portfolio holdings & strategy state to localStorage whenever they change
   useEffect(() => {
